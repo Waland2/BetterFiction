@@ -29,7 +29,6 @@ chrome.storage.local.get().then(result => {
         const numDate1 = new Date(`${month1}/${day1}/${year1}`).getTime();
         const numDate2 = new Date(`${month2}/${day2}/${year2}`).getTime();
 
-        // Сравниваем числовые значения дат
         if (numDate1 < numDate2) {
           return 1;
         } 

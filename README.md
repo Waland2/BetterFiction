@@ -1,19 +1,20 @@
 ### [Link to this extension in the chrome store](https://chromewebstore.google.com/detail/betterfiction-fanfictionn/phhdklbifojeakgelbijajifknjbhndh)
 
-BetterFiction is a comprehensive browser extension designed specifically for enhancing your reading and interaction experience with fanfics on FanFiction.net. 
+Take your FanFiction.net browsing and reading to the next level with BetterFiction, a feature-packed browser extension designed to enhance how you interact with your favorite fanfics.
 
-Key features:
+Key Features:
+- Smart Bookmarks: Save and revisit specific locations within stories effortlessly. Access all your bookmarks in a user-friendly table for seamless navigation.
 
-*Bookmarks system: The ability to save a bookmark to return to a specific location in the future. Additionally, all bookmarks can be viewed in a specialized table.
+- Restriction-Free Reading: Remove text copying limitations for a more flexible reading experience.
 
-*The ability to view all bookmarks in one table.
+- Chapter Word Counter: See how many words each chapter contains at a glance.
 
-*Removal of text copying restrictions.
+- Enhanced Sorting: Sort fanfics on user profiles by favorites or followers for easier discovery.
 
-*The word counter in the chapter.
+- Full Fic Display: Read an entire story on a single page without constant clicking.
 
-*The ability to sort fics in people's profiles by favorites and followers.
+- Visual Customization:
+   - Enlarge cover images for better visibility.
+   - Highlight key information with customizable colors.
+   - Group fanfic information for quick insights.
 
-*The ability to display the entire fic on one page.
-
-*Various functions for visual improvement (Fanfiction can now be divided into a list for better viewing, enlarge cover images, group statistics about fanfiction and highlight information in different colors).

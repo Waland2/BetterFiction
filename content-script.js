@@ -73,7 +73,6 @@ async function main() {
 
 }
 
-
 if (document.querySelector("div").querySelector("div") && document.querySelector("div").querySelector("div").classList[0] === "menulink") { // page check
     main();
 }
