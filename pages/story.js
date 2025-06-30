@@ -1,18 +1,14 @@
-var states
-chrome.runtime.sendMessage({message: "get-info"}, response => { 
-    states = response.result;
-})
 let colorOfLang, reverseColorOfLang;
 const allGeners = "AdventureAngstCrimeDramaFamilyFantasyFriendshipGeneralHorrorHumorHurt/ComfortMysteryParodyPoetryRomanceSci-FiSpiritualSupernaturalSuspenseTragedyWestern"
 
 var regex = /https:\/\/www\.fanfiction\.net\/s\/(.*?)\/(.*?)\/(.*?)$/;
 var match = window.location.href.match(regex);
 
-var chapter, storyID, ficName
+var chapter, storyID, ficName;
 if (match) {
-    chapter = match[2]; 
+    chapter = match[2];
     storyID = match[1];
-} else {    
+} else {
     chapter = 1;
     storyID = "0"; // declarating later
 }
@@ -20,8 +16,11 @@ ficName = document.querySelectorAll("b")[5].innerText;
 
 
 async function main() {
+    const { Runtime } = await import("../browser-api.js");
+
+    var states
     const messagePromise = new Promise((resolve) => {
-      chrome.runtime.sendMessage({ message: "get-info" }, response => { 
+      Runtime.sendMessage({ message: "get-info" }, response => { 
         resolve(response.result);
       });
     });
@@ -47,6 +46,7 @@ async function main() {
         published = document.querySelector(".published"),
         characters = document.querySelector(".characters"),
         status = document.querySelector(".status");
+
     if (reviewsCount) reviewsCount = reviewsCount.querySelector("a");
 
     // Story Word Counter
@@ -77,123 +77,112 @@ async function main() {
         bookmarkButton.style.height = "30px";
         bookmarkButton.title = "bookmark";
 
-        bookmarkButton.innerHTML = `<img src="${chrome.runtime.getURL("icons/bookmark2.png")}" width="20" height="20">`;
+        bookmarkButton.innerHTML = `<img src="${Runtime.getURL("icons/bookmark2.png")}" width="20" height="20">`;
 
         const followButton = document.querySelector(".icon-heart");
         followButton.before(bookmarkButton);
         followButton.remove();
         bookmarkButton.before(followButton);
-        
-        var isBookmarkLeaved = false;
+
+        let isBookmarkLeaved = false;
 
         bookmarkButton.addEventListener("click", () => {
             
             if (isBookmarkLeaved) {
                 isBookmarkLeaved = false;
-                bookmarkButton.innerHTML = `<img src="${chrome.runtime.getURL("icons/bookmark2.png")}" width="20" height="20">`;
-                chrome.runtime.sendMessage({
+                bookmarkButton.innerHTML = `<img src="${Runtime.getURL("icons/bookmark2.png")}" width="20" height="20">`;
+                Runtime.sendMessage({
                     message: "del-bookmark",
                     id: storyID
-                })
+                });
             }
             else {
                 isBookmarkLeaved = true;
-                bookmarkButton.innerHTML = `<img src="${chrome.runtime.getURL("icons/bookmark1.png")}" width="20" height="20">`;
+                bookmarkButton.innerHTML = `<img src="${Runtime.getURL("icons/bookmark1.png")}" width="20" height="20">`;
                 let fandomName = document.querySelector("#pre_story_links").querySelectorAll("a");
-                if (fandomName[1]) fandomName = fandomName[1].innerText;
-                else fandomName = fandomName[0].innerText;
+                fandomName = fandomName[1] ? fandomName[1].innerText : fandomName[0].innerText;
 
-                chrome.runtime.sendMessage({ 
+                Runtime.sendMessage({
                     message: "set-bookmark",
                     chapter: Number(chapter),
-                    id: storyID, 
+                    id: storyID,
                     fandom: fandomName,
                     author: document.querySelector("#profile_top").querySelector("a").innerText,
-                    storyName: document.querySelectorAll("b")[5].innerText
+                    storyName: ficName
                 });
 
             }
-        })
+        });
 
         // Auto bookmark on last chapter
-        if (states.autoSave) { 
-            chrome.runtime.sendMessage({ message: "auto-bookmark", chapter: chapter, id: storyID}, response => {
+        if (states.autoSave) {
+            Runtime.sendMessage({ message: "auto-bookmark", chapter: chapter, id: storyID}).then(response => {
                 if (response.status) {
                     bookmarkButton.click();
                 }
-            })
+            });
         }
 
         // Current chapter bookmark check
-        chrome.runtime.sendMessage({ message: "get-bookmark", id: storyID}, response => {
+        Runtime.sendMessage({ message: "get-bookmark", id: storyID}).then(response => {
             if (Number(response.chapter) === Number(chapter) && !isBookmarkLeaved) {
                 isBookmarkLeaved = true;
-                bookmarkButton.innerHTML = `<img src="${chrome.runtime.getURL("icons/bookmark1.png")}" width="20" height="20">`;
+                bookmarkButton.innerHTML = `<img src="${Runtime.getURL("icons/bookmark1.png")}" width="20" height="20">`;
             }
-        })
-
+        });
 
         // Creating go-to-bookmark button
-        const goButton = document.createElement("button"); 
+        const goButton = document.createElement("button");
         goButton.type = "button";
-        goButton.className = "btn pull-right"; 
-        goButton.innerHTML = "Go to bookmark"
-
+        goButton.className = "btn pull-right";
+        goButton.innerHTML = "Go to bookmark";
         goButton.style.marginRight = "5px";
-        bookmarkButton.before(goButton)
+        bookmarkButton.before(goButton);
 
         goButton.addEventListener("click", () => {
-            chrome.runtime.sendMessage({ message: "get-bookmark", id: storyID}, response => {
+            Runtime.sendMessage({ message: "get-bookmark", id: storyID}).then(response => {
                 if (Number(response.chapter) !== 0) {
-                    let chapterLink = (`https://www.fanfiction.net/s/${response.storyID}/${response.chapter}/${response.storyName}`)
+                    let chapterLink = `https://www.fanfiction.net/s/${response.storyID}/${response.chapter}/${response.storyName}`;
                     window.open(chapterLink, "_self");
                 }
-            })
-        }) 
-        
+            });
+        });
     }
 
-     // All on one page button
-     if (states.allFicButton && document.querySelector("#chap_select")) {
+    // All on one page button
+    if (states.allFicButton && document.querySelector("#chap_select")) {
 
-        const allFicButton = document.createElement("button"); 
+        const allFicButton = document.createElement("button");
         allFicButton.type = "button";
-        allFicButton.className = "btn"; 
+        allFicButton.className = "btn";
         allFicButton.innerHTML = "Entire Work";
         allFicButton.style.marginLeft = "5px";
 
         document.querySelector(`[onclick="toggleTheme();"]`).after(allFicButton);
 
-        bookmarkChapter = () => {
-            return `<img src="${chrome.runtime.getURL("icons/bookmark2.png")}" width="20" height="20">`;
-        }
+        const bookmarkChapter = () => {
+            return `<img src="${Runtime.getURL("icons/bookmark2.png")}" width="20" height="20">`;
+        };
 
-        sepSpan = (i, a) => {
+        const sepSpan = (i, a) => {
             let span = document.createElement("span");
             if (i + 1 === a.length) span.innerHTML = `<br><br><br><hr size="1" noshade=""><br><br><br>`;
-            else if (states.bookmarkButton) span.innerHTML = `<br><br><br><br><h3>${a[i + 1]}</h3><button type="button" class="btn pull-right bookmark" title="bookmark" style="margin-right: 5px; height: 30px;" id="bookmark${i + 2}">${bookmarkChapter()}</button><hr size="1" noshade="" style="
-            background: darkgrey;
-            height: 2px;
-        "><br><br><br>`;
-            else span.innerHTML = `<br><br><br><br><h3>${a[i + 1]}</h3><hr size="1" noshade="" style="
-            background: darkgrey;
-            height: 2px;
-        "><br><br><br>`;
+            else if (states.bookmarkButton) span.innerHTML = `<br><br><br><br><h3>${a[i + 1]}</h3><button type="button" class="btn pull-right bookmark" title="bookmark" style="margin-right: 5px; height: 30px;" id="bookmark${i + 2}">${bookmarkChapter()}</button><hr size="1" noshade="" style="background: darkgrey; height: 2px;"><br><br><br>`;
+            else span.innerHTML = `<br><br><br><br><h3>${a[i + 1]}</h3><hr size="1" noshade="" style="background: darkgrey; height: 2px;"><br><br><br>`;
             return span;
-        }
+        };
 
-        getChapterURL = (i) => {return `https://www.fanfiction.net/s/${storyID}/${i}`; }
+        const getChapterURL = (i) => `https://www.fanfiction.net/s/${storyID}/${i}`;
 
         allFicButton.addEventListener("click", () => {
             let count = Number(chaptersCount.innerText);
             let currentChapter = Number(chapter);
 
             let newFullStory = document.createElement("div");
-            var chaptersArray = [], chaptersName = document.querySelector("#chap_select").innerText.split("\n");
-            var gettedChapter;
+            let chaptersArray = [], chaptersName = document.querySelector("#chap_select").innerText.split("\n");
+            let gettedChapter;
 
-            getQuery = (url, i) => {
-
+            const getQuery = (url, i) => {
                 let xhr = new XMLHttpRequest();
                 xhr.open('GET', url, false);
 
@@ -201,11 +190,18 @@ async function main() {
                     
                     if (!xhr.responseText) return;
 
-                    htmlCode = new DOMParser().parseFromString(xhr.responseText, 'text/html');
-                    
+                    let htmlCode = new DOMParser().parseFromString(xhr.responseText, 'text/html');
+
                     const nextChapter = htmlCode.querySelector("#storytext");
+                    if (nextChapter) {
+                        nextChapter.id = `storytext${i + 1}`;
+                        gettedChapter = nextChapter;
+                    } else {
+                        console.warn(`Chapter ${i + 1} content not found.`);
+                    }
+
                     nextChapter.id = `storytext${i + 1}`;
-                    
+
                     gettedChapter = nextChapter;
                     // chaptersArray.push(nextChapter);
 
@@ -215,13 +211,13 @@ async function main() {
 
                 if (xhr.status === 200) return 1;
                 return 0;
-            }
+            };
 
             for (let i = 0; i < count; i++) {
                 let url = getChapterURL(i + 1);
                 if (!getQuery(url, i)) {
                     break;
-                }else {
+                } else {
                     if (i === 0) {
                         document.querySelector("#storytext").before(sepSpan(-1, chaptersName));
                     }
@@ -229,32 +225,15 @@ async function main() {
                     document.querySelector("#storytext").before(sepSpan(i, chaptersName));
                 }
             }
-            // console.log(chaptersArray);
 
-            // chaptersArray.sort((a, b) => {
-            //     let aNum = Number(a.id.replace(/[a-zA-Z]/g, "")), bNum = Number(b.id.replace(/[a-zA-Z]/g, ""));
-
-            //     if (aNum > bNum) return 1;
-            //     else return -1;
-            // })
-
-            // console.log(chaptersArray);
-
-            // document.querySelector("#storytext").before(sepSpan(-1, chaptersName));
-            // for (let i = 0; i < count; ++i) {
-            //     if (!chaptersArray[i]) break; 
-            //     document.querySelector("#storytext").before(chaptersArray[i]);
-            //     document.querySelector("#storytext").before(sepSpan(i, chaptersName));
-            // }
-
-
-            // wtf
             document.querySelector("#storytext").remove();
             let allFicText = document.querySelector("#storytext1").parentElement;
             allFicText.id = "storytext";
+
             if (states.allowCopy) {
                 allFicText.querySelectorAll("*").forEach(el => el.style.userSelect = "text");
             }
+
             let isBookmarkLeaved = false, lastChapterBookmark = -1;
             if (states.bookmarkButton) {
                 document.querySelectorAll(".bookmark").forEach(el => {
@@ -262,42 +241,50 @@ async function main() {
                     el.addEventListener("click", () => {
         
                         if (isBookmarkLeaved && lastChapterBookmark === Number(el.id.replace(/[a-zA-Z]/g, ""))) {
-                            lastChapterBookmark = -1
+                            lastChapterBookmark = -1;
                             isBookmarkLeaved = false;
-                            el.innerHTML = `<img src="${chrome.runtime.getURL("icons/bookmark2.png")}" width="20" height="20">`;
-                            chrome.runtime.sendMessage({
+                            el.innerHTML = `<img src="${Runtime.getURL("icons/bookmark2.png")}" width="20" height="20">`;
+                            Runtime.sendMessage({
                                 message: "del-bookmark",
                                 id: storyID
-                            })
+                            });
                         }
                         else {
                             if (lastChapterBookmark !== -1) {
-                                document.querySelector(`#bookmark${lastChapterBookmark}`).click();
+                                const bookmarkEl = document.querySelector(`#bookmark${response.chapter}`);
+                                if (bookmarkEl) {
+                                    bookmarkEl.click();
+                                } else {
+                                    console.warn(`Bookmark element #bookmark${response.chapter} not found.`);
+                                }
                             }
                             lastChapterBookmark = Number(el.id.replace(/[a-zA-Z]/g, ""));
                             isBookmarkLeaved = true;
-                            el.innerHTML = `<img src="${chrome.runtime.getURL("icons/bookmark1.png")}" width="20" height="20">`;
+                            el.innerHTML = `<img src="${Runtime.getURL("icons/bookmark1.png")}" width="20" height="20">`;
                             let fandomName = document.querySelector("#pre_story_links").querySelectorAll("a");
-                            if (fandomName[1]) fandomName = fandomName[1].innerText;
-                            else fandomName = fandomName[0].innerText;
-            
-                            chrome.runtime.sendMessage({ 
+                            fandomName = fandomName[1] ? fandomName[1].innerText : fandomName[0].innerText;
+
+                            Runtime.sendMessage({
                                 message: "set-bookmark",
                                 chapter: Number(el.id.replace(/[a-zA-Z]/g, "")),
-                                id: storyID, 
+                                id: storyID,
                                 fandom: fandomName,
                                 author: document.querySelector("#profile_top").querySelector("a").innerText,
-                                storyName: document.querySelectorAll("b")[5].innerText
+                                storyName: ficName
                             });
             
                         }
-                    })
+                    });
+                });
 
-                })
-
-                chrome.runtime.sendMessage({ message: "get-bookmark", id: storyID}, response => {
-                    document.querySelector(`#bookmark${response.chapter}`).click();
-                })
+                Runtime.sendMessage({ message: "get-bookmark", id: storyID}).then(response => {
+                    const bookmarkEl = document.querySelector(`#bookmark${response.chapter}`);
+                    if (bookmarkEl) {
+                        bookmarkEl.click();
+                    } else {
+                        console.warn(`Bookmark element #bookmark${response.chapter} not found.`);
+                    }
+                });
             }
 
             document.querySelector(`[title="bookmark"]`).remove();
@@ -305,18 +292,17 @@ async function main() {
         });
     }
 
-    
     // Switching colors
     if (rating.parentElement.classList.length >= 3) {
         switchTheme(
-            wordCounterSpan, 
-            rating, 
+            wordCounterSpan,
+            rating,
             language,
             genres,
             chaptersCount,
-            wordsCount, 
+            wordsCount,
             reviewsCount,
-            favsCount, 
+            favsCount,
             followsCount,
             status,
             document.querySelectorAll("h3")
@@ -325,19 +311,19 @@ async function main() {
 
     document.querySelector(`[onclick="toggleTheme();"]`).addEventListener("click", () => {
         switchTheme(
-            wordCounterSpan, 
-            rating, 
+            wordCounterSpan,
+            rating,
             language,
             genres,
             chaptersCount,
-            wordsCount, 
+            wordsCount,
             reviewsCount,
-            favsCount, 
+            favsCount,
             followsCount,
             status,
             document.querySelectorAll("h3")
         );
-    })
+    });
 }
 
 function switchTheme(wordCounterSpan, rating, lang, genres, chapters, words, rev, fav, fol, status, h3s) {

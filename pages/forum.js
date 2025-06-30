@@ -1,17 +1,13 @@
-var states
-chrome.runtime.sendMessage({message: "get-info"}, response => { 
-    states = response.result;
-})
-
-
 async function main() {
+    const { Runtime } = await import("../browser-api.js");
+
     const messagePromise = new Promise((resolve) => {
-            chrome.runtime.sendMessage({ message: "get-info" }, response => { 
+            Runtime.sendMessage({ message: "get-info" }, response => { 
             resolve(response.result);
         })
     })
 
-    states = await messagePromise;
+    var states = await messagePromise;
     let imagesParent = document.querySelectorAll('.z-list');
     let images = document.querySelectorAll(".cimage");
 

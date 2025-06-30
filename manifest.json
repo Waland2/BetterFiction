@@ -14,7 +14,8 @@
         "unlimitedStorage"
     ],  
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     },
     "content_scripts": [
         {
@@ -80,7 +81,7 @@
     "host_permissions": ["https://www.fanfiction.net/*"], 
     "web_accessible_resources": [
         {
-            "resources": ["icons/*"],
+            "resources": ["browser-api.js", "icons/*"],
             "matches": ["https://www.fanfiction.net/*"]
         },
         {

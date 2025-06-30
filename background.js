@@ -1,8 +1,10 @@
+import { Runtime, Storage, Tabs } from "./browser-api.js";
+
 const mainFunks = ["autoSave", "markFicWithBookmark", "bigCovers", "separateFics", "betterInfo", "betterInfoColor", "myFicList", "allFicButton"];
 const secondaryFunks = ["shortcuts", "allowCopy", "bookmarkButton", "chapterWordCounter", "moreOptionsInProfile"];
 
 
-chrome.runtime.onInstalled.addListener(function () {
+Runtime.onInstalled.addListener(function () {
     var data = {
         autoSave: false,
         bigCovers: true,
@@ -18,20 +20,20 @@ chrome.runtime.onInstalled.addListener(function () {
         data[el] = true;
     })
 
-    chrome.storage.sync.get("settings").then(result => {
+    Storage.sync.get("settings").then(result => {
         if (result.settings) {
             [...mainFunks, ...secondaryFunks].forEach(el => {
                 data[el] = result.settings[el];
             })
         }
-        chrome.storage.sync.set({ settings: data });
+        Storage.sync.set({ settings: data });
     })
 
 })
 
 
 
-chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
+Runtime.onMessage.addListener((action, sender, sendResponse) => {
     if (action.message === "set-bookmark") {
 
         var currentDate = new Date();
@@ -39,7 +41,7 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
         if (day < 10) day = `0${day}`;
         if (month < 10) month = `0${month}`;
         
-        chrome.storage.local.set({
+        Storage.local.set({
             [action.id]: {
                 chapter: action.chapter,
                 storyId: action.id,
@@ -51,10 +53,10 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
         });
     }
     else if (action.message === "del-bookmark") {
-        chrome.storage.local.remove(action.id);
+        Storage.local.remove(action.id);
     }
     else if (action.message === "auto-bookmark") {
-        chrome.storage.local.get([action.id]).then(result => {
+        Storage.local.get([action.id]).then(result => {
             if (!result[action.id] || Number(action.chapter) > Number(result[action.id].chapter)) {
                 sendResponse({ status: true });
             }
@@ -62,7 +64,7 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
         })
     }
     else if (action.message === "get-bookmark") {
-        chrome.storage.local.get([action.id]).then(result => {
+        Storage.local.get([action.id]).then(result => {
             if (result[action.id]) {
                 let storyName = null;
                 if (result[action.id].storyName) storyName = result[action.id].storyName.replaceAll(" ", "-");
@@ -74,15 +76,15 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
         })
     }
     else if (action.message === "get-info") {
-        chrome.storage.sync.get("settings").then(result => {
+        Storage.sync.get("settings").then(result => {
             sendResponse({ result: result.settings });
         })
     }
     else if (action.message === "open-html-page") {
-        chrome.tabs.create({ url: action.fileName });
+        Tabs.create({ url: action.fileName });
     }
     else if (action.message === "get-links") {
-        chrome.storage.local.get().then(result => {
+        Storage.local.get().then(result => {
 
             var arr = []; 
             for (let key in result) {

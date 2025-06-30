@@ -1,7 +1,9 @@
 
 async function main() {
+    const { Runtime } = await import("../browser-api.js");
+
     const messagePromise = new Promise((resolve) => {
-        chrome.runtime.sendMessage({ message: "get-info" }, response => { 
+        Runtime.sendMessage({ message: "get-info" }, response => { 
             resolve(response.result);
         })
     })
@@ -29,7 +31,7 @@ async function main() {
 
 
     const messagePromise2 = new Promise((resolve) => {
-        chrome.runtime.sendMessage({ message: "get-links" }).then(response => {
+        Runtime.sendMessage({ message: "get-links" }).then(response => {
             resolve(response.result);
         })
     })
@@ -69,7 +71,7 @@ async function main() {
             if (fwb.includes(el.querySelector("a").href)) {
                 el.style.backgroundColor = "#e1edff";
                 book = document.createElement('img');
-                book.src = chrome.runtime.getURL("icons/bookmark1.png");
+                book.src = Runtime.getURL("icons/bookmark1.png");
                 book.width = "14";
                 book.height = "14";
                 el.querySelector("div").before(book);
