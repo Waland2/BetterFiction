@@ -1,0 +1,97 @@
+{
+    "name": "BetterFiction - FanFiction.net improver",
+    "version": "1.1.8",
+    "manifest_version": 3,
+    "description": "BetterFiction - Extension to improve the experience of using the site fanfiction.net",
+    "author": "Waland2",
+    "icons": {
+        "16": "icons/ava.png",
+        "32": "icons/ava.png",
+        "128": "icons/ava.png"
+    },
+    "permissions": [
+        "storage",
+        "unlimitedStorage",
+        "tabs"
+    ],
+    "background": {
+        "scripts": ["background.js"]
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://www.fanfiction.net/*"],
+            "run_at": "document_end",
+            "js": ["content-script.js"]
+        },
+        {
+            "matches": ["https://www.fanfiction.net/s/*"],
+            "run_at": "document_end",
+            "js": ["pages/story.js"]
+        },
+        {
+            "matches": [
+                        "https://www.fanfiction.net/anime/*/*",
+                        "https://www.fanfiction.net/book/*/*",
+                        "https://www.fanfiction.net/cartoon/*/*",
+                        "https://www.fanfiction.net/comic/*/*",
+                        "https://www.fanfiction.net/game/*/*",
+                        "https://www.fanfiction.net/misc/*/*",
+                        "https://www.fanfiction.net/movie/*/*",
+                        "https://www.fanfiction.net/play/*/*",
+                        "https://www.fanfiction.net/tv/*/*"
+            ],
+            "run_at": "document_end",
+            "js": ["pages/list.js"]
+        },
+        {
+            "matches": ["https://www.fanfiction.net/u/*/*"],
+            "run_at": "document_end",
+            "js": ["pages/profile.js"]
+        },
+        {
+            "matches": ["https://www.fanfiction.net/*/*/*/*"],
+            "run_at": "document_end",
+            "js": ["pages/crossover.js"]
+        },
+        {
+            "matches": ["https://www.fanfiction.net/search/*"],
+            "run_at": "document_end",
+            "js": ["pages/search.js"]
+        },
+        {
+            "matches": ["https://www.fanfiction.net/communities/*/*/*"],
+            "run_at": "document_end",
+            "js": ["pages/communities.js"]
+        },
+        {
+            "matches": ["https://www.fanfiction.net/community/*/*/*"],
+            "run_at": "document_end",
+            "js": ["pages/community.js"]
+        },
+        {
+            "matches": ["https://www.fanfiction.net/forums/*/*/*"],
+            "run_at": "document_end",
+            "js": ["pages/forum.js"]
+        },
+        {
+            "matches": ["https://www.fanfiction.net/j/*"],
+            "run_at": "document_end",
+            "js": ["pages/just-in.js"]
+        }
+    ],
+    "host_permissions": ["https://www.fanfiction.net/*"],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "browser-api.js",
+                "icons/*"
+            ],
+            "matches": [
+                "https://www.fanfiction.net/*"
+            ]
+        }
+    ],
+    "action": {
+        "default_popup": "popup/popup.html"
+    }
+}

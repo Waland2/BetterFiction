@@ -174,55 +174,38 @@ async function main() {
 
         const getChapterURL = (i) => `https://www.fanfiction.net/s/${storyID}/${i}`;
 
-        allFicButton.addEventListener("click", () => {
+        allFicButton.addEventListener("click", async () => {
             let count = Number(chaptersCount.innerText);
             let currentChapter = Number(chapter);
 
-            let newFullStory = document.createElement("div");
-            let chaptersArray = [], chaptersName = document.querySelector("#chap_select").innerText.split("\n");
-            let gettedChapter;
+            let chaptersName = document.querySelector("#chap_select").innerText.split("\n");
 
-            const getQuery = (url, i) => {
-                let xhr = new XMLHttpRequest();
-                xhr.open('GET', url, false);
+            // This section is the replacement for the synchronous XMLHttpRequest loop
+            const originalStoryText = document.querySelector("#storytext");
+            originalStoryText.before(sepSpan(-1, chaptersName)); // Add separator for the first chapter
 
-                xhr.addEventListener('load', () => {
-                    
-                    if (!xhr.responseText) return;
-
-                    let htmlCode = new DOMParser().parseFromString(xhr.responseText, 'text/html');
-
+            for (let i = 1; i < count; i++) {
+                const url = getChapterURL(i + 1);
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) {
+                        console.warn(`Failed to fetch chapter ${i + 1}. Status: ${response.status}`);
+                        break; // Stop if a chapter can't be loaded
+                    }
+                    const text = await response.text();
+                    const htmlCode = new DOMParser().parseFromString(text, 'text/html');
                     const nextChapter = htmlCode.querySelector("#storytext");
+
                     if (nextChapter) {
                         nextChapter.id = `storytext${i + 1}`;
-                        gettedChapter = nextChapter;
+                        originalStoryText.before(nextChapter);
+                        originalStoryText.before(sepSpan(i, chaptersName));
                     } else {
-                        console.warn(`Chapter ${i + 1} content not found.`);
+                        console.warn(`Content for chapter ${i + 1} not found.`);
                     }
-
-                    nextChapter.id = `storytext${i + 1}`;
-
-                    gettedChapter = nextChapter;
-                    // chaptersArray.push(nextChapter);
-
-                });
-
-                xhr.send(null, url);
-
-                if (xhr.status === 200) return 1;
-                return 0;
-            };
-
-            for (let i = 0; i < count; i++) {
-                let url = getChapterURL(i + 1);
-                if (!getQuery(url, i)) {
-                    break;
-                } else {
-                    if (i === 0) {
-                        document.querySelector("#storytext").before(sepSpan(-1, chaptersName));
-                    }
-                    document.querySelector("#storytext").before(gettedChapter);
-                    document.querySelector("#storytext").before(sepSpan(i, chaptersName));
+                } catch (error) {
+                    console.error(`An error occurred while fetching chapter ${i + 1}:`, error);
+                    break; // Stop on network errors
                 }
             }
 
