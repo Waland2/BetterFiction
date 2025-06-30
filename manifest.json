@@ -10,6 +10,7 @@
         "128": "icons/ava.png"
     },
     "permissions": [
+        "tabs",
         "storage",
         "unlimitedStorage"
     ],  

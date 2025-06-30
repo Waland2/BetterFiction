@@ -1,6 +1,5 @@
 async function main() {
     const { Runtime } = await import('./browser-api.js');
-    console.log(Runtime);
 
     const messagePromise = new Promise((resolve) => {
             Runtime.sendMessage({ message: "get-info" }, response => { 
