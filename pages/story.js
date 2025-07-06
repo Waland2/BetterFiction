@@ -184,7 +184,7 @@ async function main() {
 
         getChapterURL = (i) => {return `https://www.fanfiction.net/s/${storyID}/${i}`; }
 
-        allFicButton.addEventListener("click", () => {
+        allFicButton.addEventListener("click", async () => {
             let count = Number(chaptersCount.innerText);
             let currentChapter = Number(chapter);
 
@@ -192,34 +192,28 @@ async function main() {
             var chaptersArray = [], chaptersName = document.querySelector("#chap_select").innerText.split("\n");
             var gettedChapter;
 
-            getQuery = (url, i) => {
+            getQuery = async (url, i) => {
+                try {
+                    const response = await fetch(url);
+                    if (!response.ok) throw new Error('Network response was not ok');
 
-                let xhr = new XMLHttpRequest();
-                xhr.open('GET', url, false);
+                    const responseText = await response.text();
+                    const htmlCode = new DOMParser().parseFromString(responseText, 'text/html');
 
-                xhr.addEventListener('load', () => {
-                    
-                    if (!xhr.responseText) return;
-
-                    htmlCode = new DOMParser().parseFromString(xhr.responseText, 'text/html');
-                    
-                    const nextChapter = htmlCode.querySelector("#storytext");
+                    const nextChapter = htmlCode.querySelector('#storytext');
                     nextChapter.id = `storytext${i + 1}`;
-                    
+
                     gettedChapter = nextChapter;
-                    // chaptersArray.push(nextChapter);
-
-                });
-
-                xhr.send(null, url);
-
-                if (xhr.status === 200) return 1;
-                return 0;
+                    return 1;
+                } catch (error) {
+                    console.error('Fetch error:', error);
+                    return 0;
+                }
             }
 
             for (let i = 0; i < count; i++) {
                 let url = getChapterURL(i + 1);
-                if (!getQuery(url, i)) {
+                if (!await getQuery(url, i)) {
                     break;
                 }else {
                     if (i === 0) {
