@@ -1,125 +1,124 @@
-var states
-chrome.runtime.sendMessage({message: "get-info"}, response => { 
-    states = response.result;
-})
-
-
+/**
+ * Main function to apply UI changes and features based on user settings.
+ * @returns {Promise<void>}
+ */
 async function main() {
-    const messagePromise = new Promise((resolve) => {
-            chrome.runtime.sendMessage({ message: "get-info" }, response => { 
-            resolve(response.result);
-        })
-    })
+    try {
+        const messagePromise = new Promise((resolve) => {
+            chrome.runtime.sendMessage({ message: 'get-info' }, (response) => {
+                resolve(response.result);
+            });
+        });
 
-    states = await messagePromise;
-    let imagesParent = document.querySelectorAll('.z-list');
-    let images = document.querySelectorAll(".cimage");
+        const settings = await messagePromise;
+        const imagesParent = document.querySelectorAll('.z-list');
+        const images = document.querySelectorAll('.cimage');
 
-    imagesParent.forEach(el => {
-        
-        let desc = el.querySelector("div").querySelector("div");
-        
-        let mas = desc.innerText.split(" - ");
+        imagesParent.forEach((element) => {
+            const descriptionDiv = element.querySelector('div').querySelector('div');
+            const metaItems = descriptionDiv.innerText.split(' - ');
 
-        let newString = mas.map(item => `<span>${item}</span>`).join(" - ");
-        let t;
-        
-        desc.innerHTML = newString;
-        
-        mySpans = desc.querySelectorAll("span");
+            const newString = metaItems.map((item) => `<span>${item}</span>`).join(' - ');
+            let spanType;
 
-        mySpans[0].classList = "lang"
+            descriptionDiv.innerHTML = newString;
 
+            const metaSpans = descriptionDiv.querySelectorAll('span');
 
-        mySpans.forEach(i => {
-            let item = i.innerText;
-            t = ""
-            if (item.includes("Topics")) t = "top";
-            else if (item.includes("Posts")) t = "pst";
-            else if (item.includes("Since")) t = "since";
-            else if (item.includes("Admin")) t = "admin";
+            metaSpans[0].classList = 'lang';
 
-            if (t) i.classList.add(t);
-        })
+            metaSpans.forEach((span) => {
+                const item = span.innerText;
+                spanType = '';
+                if (item.includes('Topics')) {
+                    spanType = 'top';
+                } else if (item.includes('Posts')) {
+                    spanType = 'pst';
+                } else if (item.includes('Since')) {
+                    spanType = 'since';
+                } else if (item.includes('Admin')) {
+                    spanType = 'admin';
+                }
 
-        let topSpan = desc.querySelector(".top");
-        let pstSpan = desc.querySelector(".pst");
+                if (spanType) {
+                    span.classList.add(spanType);
+                }
+            });
 
-        let a = topSpan.innerText.split(" ");
-        a[1] = `<span class='top-cnt'>${a[1]}</span>`;
-        topSpan.innerHTML = a.join(" ")
-        
-        a = pstSpan.innerText.split(" ");
-        a[1] = `<span class='pst-cnt'>${a[1]}</span>`;
-        pstSpan.innerHTML = a.join(" ")
-    })
+            const topicsSpan = descriptionDiv.querySelector('.top');
+            const postsSpan = descriptionDiv.querySelector('.pst');
 
+            let textArray = topicsSpan.innerText.split(' ');
+            textArray[1] = `<span class='top-cnt'>${textArray[1]}</span>`;
+            topicsSpan.innerHTML = textArray.join(' ');
 
-    if (states.bigCovers) {
-        images.forEach(el => {
-            el.style.width = "75px";
-            el.style.height = "112px";
-        })
-        
-        imagesParent.forEach(el =>{ 
-            el.style.height = "115px";
-        })
+            textArray = postsSpan.innerText.split(' ');
+            textArray[1] = `<span class='pst-cnt'>${textArray[1]}</span>`;
+            postsSpan.innerHTML = textArray.join(' ');
+        });
+
+        if (settings.bigCovers) {
+            images.forEach((element) => {
+                element.style.width = '75px';
+                element.style.height = '112px';
+            });
+
+            imagesParent.forEach((element) => {
+                element.style.height = '115px';
+            });
+        }
+
+        if (settings.separateFics) {
+            imagesParent.forEach((element) => {
+                element.style.marginBottom = '10px';
+                element.style.borderBottom = '1px solid #969696';
+                element.style.borderTop = '1px solid #969696';
+                element.style.borderRight = '1px solid #969696';
+            });
+        }
+
+        if (settings.betterInfoColor) {
+            imagesParent.forEach((element) => {
+                const descriptionDiv = element.querySelector('div').querySelector('div');
+
+                const languageSpan = descriptionDiv.querySelector('.lang'); // Language color
+                if (languageSpan.innerText === 'English') {
+                    languageSpan.style.color = '#970000';
+                } else if (languageSpan.innerText === 'Spanish') {
+                    languageSpan.style.color = '#ab8f00';
+                } else {
+                    languageSpan.style.color = '#0000ff';
+                }
+
+                const topicsCntSpan = descriptionDiv.querySelector('.top-cnt');
+                const postsCntSpan = descriptionDiv.querySelector('.pst-cnt');
+                topicsCntSpan.style.color = '#000000';
+                postsCntSpan.style.color = '#000000';
+            });
+        }
+
+        if (settings.betterInfo) {
+            imagesParent.forEach((element) => {
+                const descriptionDiv = element.querySelector('div').querySelector('div');
+                if (settings.bigCovers) {
+                    descriptionDiv.style.marginLeft = '62px';
+                }
+
+                const languageSpan = descriptionDiv.querySelector('.lang');
+                languageSpan.after(document.createElement('br'));
+
+                const postsSpan = descriptionDiv.querySelector('.pst');
+                postsSpan.after(document.createElement('br'));
+
+                element.style.height = 'auto';
+                element.style.minHeight = '120px';
+
+                descriptionDiv.innerHTML = descriptionDiv.innerHTML.replace(/<br>.{2}/g, '<br>');
+            });
+        }
+    } catch (error) {
+        console.error('Failed to apply UI enhancements and features on forum page:', error);
     }
-
-    if (states.separateFics) {
-        imagesParent.forEach(el =>{ 
-            el.style.marginBottom = "10px";
-            el.style.borderBottom = "1px solid rgb(150, 150, 150)";
-            el.style.borderTop = "1px solid rgb(150, 150, 150)";
-            el.style.borderRight = "1px solid rgb(150, 150, 150)";
-        })
-    }
-
-    if (states.betterInfoColor) {
-        imagesParent.forEach(el => {
-
-            let desc = el.querySelector("div").querySelector("div");
-
-            let langSpan = desc.querySelector(".lang"); // Language color
-            if (langSpan.innerText === "English") langSpan.style.color = "rgb(151, 0, 0)";
-            else if (langSpan.innerText === "Spanish") langSpan.style.color = "rgb(171, 143, 0)";
-            else langSpan.style.color = "blue";
-            
-            desc.querySelector(".pst-cnt").style.color = "black";
-            desc.querySelector(".top-cnt").style.color = "black";
-
-            // desc.querySelector(".admin").style.color = "black";
-
-        })
-        
-    }
-
-
-    if (states.betterInfo) {
-        
-        imagesParent.forEach(el => {    
-            let desc  = el.querySelector("div").querySelector("div");
-            if (states.bigCovers) {
-                desc.style.marginLeft = "62px";
-            }
-
-            desc.querySelector(".lang").after(document.createElement("br"));
-            desc.querySelector(".pst").after(document.createElement("br"));
-
-            el.style.height = "auto";
-            el.style.minHeight = "120px";
-            
-
-            desc.innerHTML = desc.innerHTML.replace(/<br>.{2}/g, '<br>');
-
-        })
-
-    }
-
-    
 }
 
-
 main();
-
- 
