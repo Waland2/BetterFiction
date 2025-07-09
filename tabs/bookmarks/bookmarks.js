@@ -1,6 +1,43 @@
 const tableBody = document.querySelector('tbody');
 const bookmarkData = [];
 
+// Compatibility for bookmarks created before format change
+chrome.storage.local.get().then((result) => {
+    console.log(result)
+    let bookmarks = result;
+    let updated = false;
+    for (const key in bookmarks) {
+        const bookmark = result[key];
+        if (bookmark.hasOwnProperty("fandomName")) {
+            bookmarks[key].fandom = bookmark.fandomName;
+            delete bookmarks[key].fandomName;
+            updated = true;
+        }
+
+        if (bookmark.hasOwnProperty("storyId")) {
+            bookmarks[key].id = bookmark.storyId;
+            delete bookmarks[key].storyId;
+            updated = true;
+        }
+
+        if (bookmark.addTime.search("/") !== -1) {
+            const [day, month, year] = bookmark.addTime.split("/");
+            bookmarks[key].addTime = new Date(`${year}-${month}-${day}T00:00:00.000Z`).toISOString();
+            updated = true;
+        }
+    }
+
+    if (updated) {
+        chrome.storage.local.clear()
+            .then(() => chrome.storage.local.set(bookmarks))
+            .then(() => location.reload())
+            .catch(console.error);
+    }
+})
+.catch((error) => {
+    console.error('Failed to load bookmarks from local storage:', error);
+});
+
 chrome.storage.local.get()
     .then((result) => {
         for (const key in result) {
