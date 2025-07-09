@@ -9,10 +9,7 @@
         "32": "icons/ava.png",
         "128": "icons/ava.png"
     },
-    "permissions": [
-        "storage",
-        "unlimitedStorage"
-    ],  
+    "permissions": ["storage", "unlimitedStorage"],
     "background": {
         "service_worker": "background.js"
     },
@@ -29,15 +26,16 @@
         },
         {
             "matches": [
-                        "https://www.fanfiction.net/anime/*/*", 
-                        "https://www.fanfiction.net/book/*/*",
-                        "https://www.fanfiction.net/cartoon/*/*",
-                        "https://www.fanfiction.net/comic/*/*",
-                        "https://www.fanfiction.net/game/*/*",
-                        "https://www.fanfiction.net/misc/*/*",
-                        "https://www.fanfiction.net/movie/*/*",
-                        "https://www.fanfiction.net/play/*/*",
-                        "https://www.fanfiction.net/tv/*/*"],
+                "https://www.fanfiction.net/anime/*/*",
+                "https://www.fanfiction.net/book/*/*",
+                "https://www.fanfiction.net/cartoon/*/*",
+                "https://www.fanfiction.net/comic/*/*",
+                "https://www.fanfiction.net/game/*/*",
+                "https://www.fanfiction.net/misc/*/*",
+                "https://www.fanfiction.net/movie/*/*",
+                "https://www.fanfiction.net/play/*/*",
+                "https://www.fanfiction.net/tv/*/*"
+            ],
             "run_at": "document_end",
             "js": ["pages/list.js"]
         },
@@ -60,7 +58,7 @@
             "matches": ["https://www.fanfiction.net/communities/*/*/*"],
             "run_at": "document_end",
             "js": ["pages/communities.js"]
-        }, 
+        },
         {
             "matches": ["https://www.fanfiction.net/community/*/*/*"],
             "run_at": "document_end",
@@ -77,7 +75,7 @@
             "js": ["pages/just-in.js"]
         }
     ],
-    "host_permissions": ["https://www.fanfiction.net/*"], 
+    "host_permissions": ["https://www.fanfiction.net/*"],
     "web_accessible_resources": [
         {
             "resources": ["icons/*"],
@@ -89,6 +87,6 @@
         }
     ],
     "action": {
-        "default_popup":"popup/popup.html"
+        "default_popup": "popup/popup.html"
     }
 }

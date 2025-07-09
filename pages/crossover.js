@@ -1,265 +1,268 @@
-var states
-chrome.runtime.sendMessage({message: "get-info"}, response => { 
-    states = response.result;
-})
-
+/**
+ * Main function to apply UI changes and features based on user settings.
+ * @returns {Promise<void>}
+ */
 async function main() {
     const messagePromise = new Promise((resolve) => {
-            chrome.runtime.sendMessage({ message: "get-info" }, response => { 
+        chrome.runtime.sendMessage({ message: 'get-info' }, (response) => {
             resolve(response.result);
-        })
-    })
+        });
+    });
 
-    states = await messagePromise;
-    let imagesParent = document.querySelectorAll('.z-list.zhover');
-    let images = document.querySelectorAll(".cimage");
+    const settings = await messagePromise;
+    const imagesParent = document.querySelectorAll('.z-list.zhover');
+    const images = document.querySelectorAll('.cimage');
 
+    const bookmarkDataPromise = new Promise((resolve) => {
+        chrome.runtime.sendMessage({ message: 'get-links' })
+            .then((response) => {
+                resolve(response.result);
+            })
+            .catch((error) => {
+                console.error('Failed to retrieve bookmark links for crossover page:', error);
+                resolve([]);
+            });
+    });
 
-    const messagePromise2 = new Promise((resolve) => {
-        chrome.runtime.sendMessage({ message: "get-links" }).then(response => {
-            resolve(response.result);
-        })
-    })
+    const bookmarkData = await bookmarkDataPromise;
 
-    var fwb = await messagePromise2;
-    
-    imagesParent.forEach(el => {
-            
-        let desc = el.querySelector("div").querySelector("div");
-        
-        let mas = desc.innerText.split(" - ");
+    imagesParent.forEach((element) => {
+        const descriptionDiv = element.querySelector('div').querySelector('div');
+        const metaItems = descriptionDiv.innerText.split(' - ');
 
-        // console.table(mas);
+        const newString = metaItems.map((item) => `<span>${item}</span>`).join(' - ');
+        let spanType;
 
-        let newString = mas.map(item => `<span>${item}</span>`).join(" - ");
-        let t;
-        
-        desc.innerHTML = newString;
-        
-        let mySpans = desc.querySelectorAll("span");
+        descriptionDiv.innerHTML = newString;
 
-        // console.log(mySpans[0].innerText);
-        if (!mySpans[0].innerText.includes("Rated")) {
-            if (mySpans[0].innerText === "Crossover") {
-                mySpans[0].classList = "fran"
-                mySpans[1].classList = "fran"
-            }else {
-                mySpans[0].classList = "fran"
+        const metaSpans = descriptionDiv.querySelectorAll('span');
+
+        if (!metaSpans[0].innerText.includes('Rated')) {
+            if (metaSpans[0].innerText === 'Crossover') {
+                metaSpans[0].classList = 'fran';
+                metaSpans[1].classList = 'fran';
+            } else {
+                metaSpans[0].classList = 'fran';
             }
 
-            mySpans[3].classList = "lang"
-            if (!mySpans[4].innerText.includes("Chapters")) {
-                mySpans[4].classList = "genres";
+            metaSpans[3].classList = 'lang';
+            if (!metaSpans[4].innerText.includes('Chapters')) {
+                metaSpans[4].classList = 'genres';
             }
-        } 
-        else {
-            mySpans[1].classList = "lang"
-            if (!mySpans[2].innerText.includes("Chapters")) {
-                mySpans[2].classList = "genres";
+        } else {
+            metaSpans[1].classList = 'lang';
+            if (!metaSpans[2].innerText.includes('Chapters')) {
+                metaSpans[2].classList = 'genres';
             }
         }
 
-        if (mySpans[mySpans.length - 1].innerText === "Complete") {
-            mySpans[mySpans.length - 1].classList = "status";
+        if (metaSpans[metaSpans.length - 1].innerText === 'Complete') {
+            metaSpans[metaSpans.length - 1].classList = 'status';
         }
 
-        mySpans.forEach(i => {
-            let item = i.innerText;
-            t = ""
-            if (item.includes("Rated")) t = "rated";
-            else if (item.includes("Chapters")) t = "chapters";
-            else if (item.includes("Words")) t = "words";
-            else if (item.includes("Reviews")) t = "review";
-            else if (item.includes("Favs")) t = "fav";
-            else if (item.includes("Follows")) t = "follow";
-            else if (item.includes("Updated")) t = "updated";
-            else if (item.includes("Published")) t = "published";
+        metaSpans.forEach((span) => {
+            const item = span.innerText;
+            spanType = '';
+            if (item.includes('Rated')) {
+                spanType = 'rated';
+            } else if (item.includes('Chapters')) {
+                spanType = 'chapters';
+            } else if (item.includes('Words')) {
+                spanType = 'words';
+            } else if (item.includes('Reviews')) {
+                spanType = 'review';
+            } else if (item.includes('Favs')) {
+                spanType = 'fav';
+            } else if (item.includes('Follows')) {
+                spanType = 'follow';
+            } else if (item.includes('Updated')) {
+                spanType = 'updated';
+            } else if (item.includes('Published')) {
+                spanType = 'published';
+            }
 
-            if (t) i.classList.add(t);
-        })
+            if (spanType) {
+                span.classList.add(spanType);
+            }
+        });
 
-        let v = desc.querySelector(":not([class])")
-        if (v) v.className = "characters";
+        const characterSpan = descriptionDiv.querySelector(':not([class])');
+        if (characterSpan) {
+            characterSpan.className = 'characters';
+        }
 
-        let wordSpan = desc.querySelector(".words");
-        let chapterSpan = desc.querySelector(".chapters");
-        let favSpan = desc.querySelector(".fav");
-        let folSpan = desc.querySelector(".follow");
-        let rewSpan = desc.querySelector(".review");
+        const wordsSpan = descriptionDiv.querySelector('.words');
+        const chaptersSpan = descriptionDiv.querySelector('.chapters');
+        const favSpan = descriptionDiv.querySelector('.fav');
+        const followSpan = descriptionDiv.querySelector('.follow');
+        const reviewSpan = descriptionDiv.querySelector('.review');
 
-        let a = wordSpan.innerText.split(" ");
-        a[1] = `<span class='words-cnt'>${a[1]}</span>`;
-        wordSpan.innerHTML = a.join(" ")
+        let textArray = wordsSpan.innerText.split(' ');
+        textArray[1] = `<span class='words-cnt'>${textArray[1]}</span>`;
+        wordsSpan.innerHTML = textArray.join(' ');
 
-        a = chapterSpan.innerText.split(" ");
-        a[1] = `<span class='chapters-cnt'>${a[1]}</span>`;
-        chapterSpan.innerHTML = a.join(" ")
+        textArray = chaptersSpan.innerText.split(' ');
+        textArray[1] = `<span class='chapters-cnt'>${textArray[1]}</span>`;
+        chaptersSpan.innerHTML = textArray.join(' ');
 
         if (favSpan) {
-            a = favSpan.innerText.split(" ");
-            a[1] = `<span class='fav-cnt'>${a[1]}</span>`;
-            favSpan.innerHTML = a.join(" ")
+            textArray = favSpan.innerText.split(' ');
+            textArray[1] = `<span class='fav-cnt'>${textArray[1]}</span>`;
+            favSpan.innerHTML = textArray.join(' ');
         }
-        if (folSpan) {
-            a = folSpan.innerText.split(" ");
-            a[1] = `<span class='fol-cnt'>${a[1]}</span>`;
-            folSpan.innerHTML = a.join(" ")
+        if (followSpan) {
+            textArray = followSpan.innerText.split(' ');
+            textArray[1] = `<span class='fol-cnt'>${textArray[1]}</span>`;
+            followSpan.innerHTML = textArray.join(' ');
         }
-        if (rewSpan) {
-            a = rewSpan.innerText.split(" ");
-            a[1] = `<span class='rew-cnt'>${a[1]}</span>`;
-            rewSpan.innerHTML = a.join(" ")
+        if (reviewSpan) {
+            textArray = reviewSpan.innerText.split(' ');
+            textArray[1] = `<span class='rew-cnt'>${textArray[1]}</span>`;
+            reviewSpan.innerHTML = textArray.join(' ');
         }
-    })
+    });
 
-
-    // Mark fics with bookmark
-    if (states.markFicWithBookmark) {
-        imagesParent.forEach(el =>{ 
-            if (fwb.includes(el.querySelector("a").href)) {
-                el.style.backgroundColor = "#e1edff";
-                book = document.createElement('img');
-                book.src = chrome.runtime.getURL("icons/bookmark1.png");
-                book.width = "14";
-                book.height = "14";
-                el.querySelector("div").before(book);
+    if (settings.markFicWithBookmark) {
+        imagesParent.forEach((element) => {
+            if (bookmarkData.includes(element.querySelector('a').href)) {
+                element.style.backgroundColor = '#e1edff';
+                const bookmarkIcon = document.createElement('img');
+                bookmarkIcon.src = chrome.runtime.getURL('icons/bookmark1.png');
+                bookmarkIcon.width = '14';
+                bookmarkIcon.height = '14';
+                element.querySelector('div').before(bookmarkIcon);
             }
-        })
+        });
     }
 
-    if (states.bigCovers) {
-        images.forEach(el => {
-            el.style.width = "75px";
-            el.style.height = "112px";
-        })
-        
-        imagesParent.forEach(el =>{ 
-            el.style.height = "115px";
-        })
+    if (settings.bigCovers) {
+        images.forEach((element) => {
+            element.style.width = '75px';
+            element.style.height = '112px';
+        });
+
+        imagesParent.forEach((element) => {
+            element.style.height = '115px';
+        });
     }
 
-    if (states.separateFics) {
-        imagesParent.forEach(el =>{ 
-            el.style.marginBottom = "10px";
-            el.style.borderBottom = "1px solid rgb(150, 150, 150)";
-            el.style.borderTop = "1px solid rgb(150, 150, 150)";
-            el.style.borderRight = "1px solid rgb(150, 150, 150)";
-        })
+    if (settings.separateFics) {
+        imagesParent.forEach((element) => {
+            element.style.marginBottom = '10px';
+            element.style.borderBottom = '1px solid #969696';
+            element.style.borderTop = '1px solid #969696';
+            element.style.borderRight = '1px solid #969696';
+        });
     }
 
-    if (states.betterInfoColor) {
+    if (settings.betterInfoColor) {
+        imagesParent.forEach((element) => {
+            const descriptionDiv = element.querySelector('div').querySelector('div');
 
-        imagesParent.forEach(el => {
-            let desc = el.querySelector("div").querySelector("div");
-
-            let langSpan = desc.querySelector(".lang"); // Language color
-            if (langSpan.innerText === "English") langSpan.style.color = "rgb(151, 0, 0)";
-            else if (langSpan.innerText === "Spanish") langSpan.style.color = "rgb(171, 143, 0)";
-            else langSpan.style.color = "blue";
-            
-            let statusSpan = desc.querySelector(".status"); 
-            if (statusSpan) { // color for Complete
-                statusSpan.style.color = "rgb(0, 99, 31)";
-                statusSpan.style.fontWeight = "600";
+            const languageSpan = descriptionDiv.querySelector('.lang'); // Language color
+            if (languageSpan.innerText === 'English') {
+                languageSpan.style.color = '#970000';
+            } else if (languageSpan.innerText === 'Spanish') {
+                languageSpan.style.color = '#ab8f00';
+            } else {
+                languageSpan.style.color = '#0000ff';
             }
 
-            let rateSpan = desc.querySelector(".rated");
-            if (rateSpan) {
-                rateSpan.style.color = "rgb(8, 131, 131)";
-            }    
+            const statusSpan = descriptionDiv.querySelector('.status');
+            if (statusSpan) {
+                // color for Complete
+                statusSpan.style.color = '#00631f';
+                statusSpan.style.fontWeight = '600';
+            }
 
-            let wordSpan = desc.querySelector(".words-cnt");
-            let chapterSpan = desc.querySelector(".chapters-cnt");
-            wordSpan.style.color = "black";
-            chapterSpan.style.color = "black";
-            // wordSpan.style.fontWeight = "600";
-            // chapterSpan.style.fontWeight = "600";
+            const ratingSpan = descriptionDiv.querySelector('.rated');
+            if (ratingSpan) {
+                ratingSpan.style.color = '#088383';
+            }
 
-            let favSpan = desc.querySelector(".fav-cnt");
-            let folSpan = desc.querySelector(".fol-cnt");
-            let rewSpan = desc.querySelector(".rew-cnt");
+            const wordsSpan = descriptionDiv.querySelector('.words-cnt');
+            const chaptersSpan = descriptionDiv.querySelector('.chapters-cnt');
+            wordsSpan.style.color = '#000000';
+            chaptersSpan.style.color = '#000000';
+
+            const favSpan = descriptionDiv.querySelector('.fav-cnt');
+            const followSpan = descriptionDiv.querySelector('.fol-cnt');
+            const reviewSpan = descriptionDiv.querySelector('.rew-cnt');
             if (favSpan) {
-                favSpan.style.color = "black";
+                favSpan.style.color = '#000000';
             }
-            if (folSpan) {
-                folSpan.style.color = "black";
+            if (followSpan) {
+                followSpan.style.color = '#000000';
             }
-            if (rewSpan) {
-                rewSpan.style.color = "black";
-            }
-            // favSpan.style.fontWeight = "600";
-            // folSpan.style.fontWeight = "600";
-            // rewSpan.style.fontWeight = "600";
-
-            let genSpan = desc.querySelector(".genres");
-            if (genSpan) {
-                genSpan.style.color = "rgb(144, 48, 0)";
+            if (reviewSpan) {
+                reviewSpan.style.color = '#000000';
             }
 
-            let frn = desc.querySelectorAll(".fran");
-            frn.forEach(it => {
-                it.style.fontWeight = "600";
-            })
-        })
+            const genreSpan = descriptionDiv.querySelector('.genres');
+            if (genreSpan) {
+                genreSpan.style.color = '#903000';
+            }
+
+            const fandomSpans = descriptionDiv.querySelectorAll('.fran');
+            fandomSpans.forEach((span) => {
+                span.style.fontWeight = '600';
+            });
+        });
     }
 
-
-    if (states.betterInfo) {
-
-        imagesParent.forEach(el => {
-            
-            let desc  = el.querySelector("div").querySelector("div");
-            if (states.bigCovers) {
-                desc.style.marginLeft = "62px";
+    if (settings.betterInfo) {
+        imagesParent.forEach((element) => {
+            const descriptionDiv = element.querySelector('div').querySelector('div');
+            if (settings.bigCovers) {
+                descriptionDiv.style.marginLeft = '62px';
             }
-            let frn, gen, wrd, flw, pbl;
-            let check = 0;
-            gen = desc.querySelector(".genres")
+            let fandomSpans;
+            let genreSpan;
+            let wordsSpan;
+            let followSpan;
+            let publishedSpan;
+            let hasExtraInfo = 0;
+            genreSpan = descriptionDiv.querySelector('.genres');
 
-            frn = el.querySelectorAll(".fran")
-            if (frn[frn.length - 1]) {
-                frn[frn.length - 1].after(document.createElement("br"));
-            }
-
-            if (gen){
-                gen.after(document.createElement("br"));
-            } 
-            else {
-                desc.querySelector(".lang").after(document.createElement("br"));
+            fandomSpans = element.querySelectorAll('.fran');
+            if (fandomSpans[fandomSpans.length - 1]) {
+                fandomSpans[fandomSpans.length - 1].after(document.createElement('br'));
             }
 
-            wrd = desc.querySelector(".words")
-            wrd.after(document.createElement("br"));
-
-            flw = desc.querySelector(".follow")
-            if (flw) flw.after(document.createElement("br"));
-            else if (desc.querySelector(".fav")) desc.querySelector(".fav").after(document.createElement("br"));
-            else if (desc.querySelector(".review")) desc.querySelector(".review").after(document.createElement("br"));
-            else check = 1
-
-            pbl = desc.querySelector(".published");
-            if (desc.querySelector(".status") || desc.querySelector(".characters")) {
-                pbl.after(document.createElement("br"));
+            if (genreSpan) {
+                genreSpan.after(document.createElement('br'));
+            } else {
+                descriptionDiv.querySelector('.lang').after(document.createElement('br'));
             }
 
+            wordsSpan = descriptionDiv.querySelector('.words');
+            wordsSpan.after(document.createElement('br'));
 
-            el.style.height = `auto`;
-            el.style.minHeight = "120px";
+            followSpan = descriptionDiv.querySelector('.follow');
+            if (followSpan) {
+                followSpan.after(document.createElement('br'));
+            } else if (descriptionDiv.querySelector('.fav')) {
+                descriptionDiv.querySelector('.fav').after(document.createElement('br'));
+            } else if (descriptionDiv.querySelector('.review')) {
+                descriptionDiv.querySelector('.review').after(document.createElement('br'));
+            } else {
+                hasExtraInfo = 1;
+            }
 
-            
-            
-            
-            desc.innerHTML = desc.innerHTML.replace(/<br>.{2}/g, '<br>');
+            publishedSpan = descriptionDiv.querySelector('.published');
+            if (descriptionDiv.querySelector('.status') || descriptionDiv.querySelector('.characters')) {
+                publishedSpan.after(document.createElement('br'));
+            }
 
-        })
+            element.style.height = 'auto';
+            element.style.minHeight = '120px';
 
+            descriptionDiv.innerHTML = descriptionDiv.innerHTML.replace(/<br>.{2}/g, '<br>');
+        });
     }
-
 }
 
-let link = window.location.href;
-if (link.includes("Crossovers")) {
+const link = window.location.href;
+if (link.includes('Crossovers')) {
     main();
 }
-
- 
