@@ -186,20 +186,21 @@ header span:hover {
     box-sizing: inherit;
 }
 
-.bywaland {
+.note {
     font-size: 14px;
     border-top: 2px solid #2d2d2d;
     padding: 10px;
     text-align: center;
 }
 
-.bywaland a {
+.note a {
     text-decoration: none;
     color: #a2d5ff;
     transition: 0.15s;
 }
 
-.bywaland a:hover {
+.note a:hover {
     transition: 0.15s;
     color: #57b2fc;
 }
+
