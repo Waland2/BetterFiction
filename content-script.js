@@ -257,7 +257,7 @@ async function main() {
                 const getChapterURL = n => `https://www.fanfiction.net/s/${id}/${n}`;
                 const sepSpan = (i, arr, className) => Object.assign(document.createElement('span'), {
                     className,
-                    innerHTML: '<br><br><br><br>' + (i !== arr.length ? `<h3>${arr[i]}</h3>${settings.bookmarkButton ? `<button type="button" class="btn pull-right bookmark" title="bookmark" style="margin-right: 5px; height: 30px;" id="bookmark${i + 2}">${iconUnmarked}</button>` : ''}` : '') + '<hr size="1" noshade style="background: darkgrey; height: 2px;"><br><br><br>'
+                    innerHTML: '<br><br><br><br>' + (i !== arr.length ? `<h3>${arr[i]}</h3>${settings.bookmarkButton ? `<button type="button" class="btn pull-right bookmark" title="bookmark" style="margin-right: 5px; height: 30px;" id="bookmark${i + 1}">${iconUnmarked}</button>` : ''}` : '') + '<hr size="1" noshade style="background: darkgrey; height: 2px;"><br><br><br>'
                 });
                 const allFicButton = document.createElement('button');
                 allFicButton.type = 'button';
