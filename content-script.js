@@ -201,7 +201,7 @@ async function main() {
             const chapter = Number(chapSelect.options[chapSelect.selectedIndex].innerText.split('.')[0]);
             const iconUnmarked = `<img src="${chrome.runtime.getURL('icons/bookmark2.png')}" width="20" height="20">`;
             const iconMarked = `<img src="${chrome.runtime.getURL('icons/bookmark1.png')}" width="20" height="20">`;
-            let isBookmarked = false, lastChapterBookmark = -1;
+            let lastChapterBookmark = 0;
             let fandom = preStoryLinks?.[1]?.innerText || preStoryLinks?.[0]?.innerText || '';
             if (settings.chapterWordCounter) {
                 let wordCounter = 0;
@@ -215,11 +215,13 @@ async function main() {
                 bookmarkButton.title = 'bookmark';
                 bookmarkButton.innerHTML = iconUnmarked;
                 bookmarkButton.addEventListener('click', () => {
-                    isBookmarked = !isBookmarked;
-                    bookmarkButton.innerHTML = isBookmarked ? iconMarked : iconUnmarked;
-                    if (isBookmarked) {
-                        chrome.runtime.sendMessage({ message: 'set-bookmark', chapter: Number(chapter), id, fandom, author: profileAuthor, storyName });
+                    if (lastChapterBookmark !== chapter) {
+                        lastChapterBookmark = chapter;
+                        bookmarkButton.innerHTML = iconMarked;
+                        chrome.runtime.sendMessage({ message: 'set-bookmark', chapter: chapter, id, fandom, author: profileAuthor, storyName });
                     } else {
+                        lastChapterBookmark = 0;
+                        bookmarkButton.innerHTML = iconUnmarked;
                         chrome.runtime.sendMessage({ message: 'del-bookmark', id });
                     }
                 });
@@ -238,10 +240,8 @@ async function main() {
                 followButton.after(goButton);
                 if (settings.autoSave) chrome.runtime.sendMessage({ message: 'auto-bookmark', chapter, id }, r => { if (r.status) bookmarkButton.click(); });
                 chrome.runtime.sendMessage({ message: 'get-bookmark', id }, r => {
-                    if (Number(r.chapter) === Number(chapter) && !isBookmarked) {
-                        isBookmarked = true;
-                        bookmarkButton.innerHTML = iconMarked;
-                    }
+                    lastChapterBookmark = Number(r.chapter);
+                    if (lastChapterBookmark === chapter) bookmarkButton.innerHTML = iconMarked;
                 });
             }
             if (settings.allFicButton) {
@@ -289,22 +289,20 @@ async function main() {
                         Array.from(document.querySelectorAll('.bookmark')).forEach(element => {
                             element.addEventListener('click', () => {
                                 const chapNum = Number(element.id.replace(/\D/g, ''));
-                                if (isBookmarked && lastChapterBookmark === chapNum) {
-                                    lastChapterBookmark = -1; isBookmarked = false;
+                                if (lastChapterBookmark === chapNum) {
+                                    lastChapterBookmark = 0;
                                     element.innerHTML = iconUnmarked;
                                     chrome.runtime.sendMessage({ message: 'del-bookmark', id });
                                 } else {
-                                    if (lastChapterBookmark !== -1) document.querySelector(`#bookmark${lastChapterBookmark}`).click();
-                                    lastChapterBookmark = chapNum; isBookmarked = true;
+                                    if (lastChapterBookmark) document.querySelector(`#bookmark${lastChapterBookmark}`).click();
+                                    lastChapterBookmark = chapNum;
                                     element.innerHTML = iconMarked;
                                     chrome.runtime.sendMessage({ message: 'set-bookmark', chapter: chapNum, id, fandom, author: profileAuthor, storyName });
                                 }
                             });
                         });
-                        chrome.runtime.sendMessage({ message: 'get-bookmark', id }, r => {
-                            const bookmarkElement = document.querySelector(`#bookmark${r.chapter}`);
-                            bookmarkElement?.click();
-                        });
+                        const bookmarkElement = document.querySelector(`#bookmark${lastChapterBookmark}`);
+                        if (bookmarkElement) bookmarkElement.innerHTML = iconMarked;
                     }
                 });
                 followButton.after(allFicButton);
