@@ -48,7 +48,7 @@
         {
             "matches": ["https://www.fanfiction.net/*/*/*/*"],
             "run_at": "document_end",
-            "js": ["pages/crossover.js"]
+            "js": ["pages/fandom.js"]
         },
         {
             "matches": ["https://www.fanfiction.net/search/*"],
