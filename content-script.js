@@ -21,21 +21,17 @@ async function main() {
         }));
 
         if (settings.myFicList) {
-            const ficListButton = document.createElement('span');
-            ficListButton.innerHTML = `<img src='${chrome.runtime.getURL('icons/list.png')}' style='vertical-align: middle; cursor: default; margin-left: 12px;' title='My fic list' width='20' height='20'>`;
-            ficListButton.id = 'openMyFicList';
-            topMenu.appendChild(ficListButton);
-            ficListButton.addEventListener('click', () => chrome.runtime.sendMessage({ message: 'open-html-page', fileName: 'tabs/my-list/my-list.html' }));
+            topMenu.appendChild(Object.assign(document.createElement('span'), {
+                innerHTML: `<img src='${chrome.runtime.getURL('icons/list.png')}' style='vertical-align: middle; cursor: default; margin-left: 12px;' title='My fic list' width='20' height='20'>`,
+                id: 'openMyFicList'
+            })).addEventListener('click', () => chrome.runtime.sendMessage({ message: 'open-html-page', fileName: 'tabs/my-list/my-list.html' }));
         }
 
         if (settings.shortcuts) {
-            const root = document.createElement('div');
-            Object.assign(root.style, { position: 'relative', display: 'inline-block', marginBottom: '0px' });
-            const shadow = root.attachShadow({ mode: 'open' });
-            const newTop = document.createElement('span');
-            newTop.innerHTML = `<a href='https://www.fanfiction.net/favorites/story.php' style='margin-left: 10px;'><img src='${chrome.runtime.getURL('icons/heart.png')}' style='vertical-align: middle; cursor: default;' title='Favorite Stories' width='20' height='20'></a><a href='https://www.fanfiction.net/alert/story.php' style='margin-left: 8px;'><img src='${chrome.runtime.getURL('icons/book.png')}' style='vertical-align: middle; cursor: default;' title='Followed Stories' width='20' height='20'></a>`;
-            shadow.appendChild(newTop);
-            topMenu.appendChild(root);
+            topMenu.appendChild(Object.assign(document.createElement('div'), { style: 'position: relative; display: inline-block; margin-bottom: 0px;' }));
+            topMenu.lastChild.attachShadow({ mode: 'open' }).appendChild(Object.assign(document.createElement('span'), {
+                innerHTML: `<a href='https://www.fanfiction.net/favorites/story.php' style='margin-left: 10px;'><img src='${chrome.runtime.getURL('icons/heart.png')}' style='vertical-align: middle; cursor: default;' title='Favorite Stories' width='20' height='20'></a><a href='https://www.fanfiction.net/alert/story.php' style='margin-left: 8px;'><img src='${chrome.runtime.getURL('icons/book.png')}' style='vertical-align: middle; cursor: default;' title='Followed Stories' width='20' height='20'></a>`
+            }));
         }
 
         document.querySelectorAll('.adsbygoogle').forEach(e => e.remove());
@@ -79,18 +75,17 @@ async function main() {
             const array = Array.from(placeElem.querySelectorAll(`.${storyType}`));
             const storyContainer = document.querySelector(`#${place}_inside`);
             ['Follows', 'Favs'].forEach(metatype => {
-                const el = document.createElement('span');
-                el.innerHTML = metatype;
-                el.className = 'gray';
-                el.onclick = () => {
-                    array.sort((a, b) => {
-                        const get = s => Number(s.querySelector(`.${metatype.toLowerCase()}metatype-val`)?.innerText.replaceAll(',', '')) || 0;
-                        return get(b) - get(a);
-                    });
-                    placeElem.querySelectorAll(`.${storyType}`).forEach(e => e.remove());
-                    array.forEach(e => storyContainer.appendChild(e));
-                };
-                sortButton.before(el, document.createTextNode(' . '));
+                sortButton.before(Object.assign(document.createElement('span'), {
+                    innerHTML: metatype,
+                    className: 'gray',
+                    onclick: () => {
+                        Array.from(placeElem.querySelectorAll(`.${storyType}`)).sort((a, b) => {
+                            const get = s => Number(s.querySelector(`.${metatype.toLowerCase()}metatype-val`)?.innerText.replaceAll(',', '')) || 0;
+                            return get(b) - get(a);
+                        }).forEach(e => storyContainer.appendChild(e));
+                        placeElem.querySelectorAll(`.${storyType}`).forEach(e => e.remove());
+                    }
+                }), document.createTextNode(' . '));
             });
         });
 
@@ -118,8 +113,7 @@ async function main() {
                 const splitByRated = descriptionDiv.innerText.split(' - Rated: ');
                 if (splitByRated.length > 1) {
                     if (splitByRated[0].startsWith('Crossover - ')) splitByRated[0] = splitByRated[0].substring(11);
-                    splitByRated[0] = 'Fandom: ' + splitByRated[0];
-                    splitByRated[0] = splitByRated[0].replaceAll(' - ', '[@]');
+                    splitByRated[0] = 'Fandom: ' + splitByRated[0].replaceAll(' - ', '[@]');
                     descriptionDiv.innerText = splitByRated.join(' - Rated: ');
                 }
                 let endIndex = descriptionDiv.innerText.lastIndexOf(' - ');
@@ -153,10 +147,10 @@ async function main() {
                 });
                 if (settings.betterInfo) {
                     Object.assign(descriptionDiv.style, { display: 'flow-root', paddingLeft: '0' });
-                    const sortedItems = descriptionDiv.innerHTML.split(' - ');
-                    const findIndex = item => METATYPES[item.charAt(13).toUpperCase() + item.substring(14, item.indexOf('metatype'))]?.[0];
-                    sortedItems.sort((a, b) => findIndex(a) - findIndex(b));
-                    descriptionDiv.innerHTML = sortedItems.join(' - ');
+                    descriptionDiv.innerHTML = descriptionDiv.innerHTML.split(' - ').sort((a, b) => {
+                        const findIndex = item => METATYPES[item.charAt(13).toUpperCase() + item.substring(14, item.indexOf('metatype'))]?.[0];
+                        return findIndex(a) - findIndex(b);
+                    }).join(' - ');
                     [['fandom'], ['genre', 'language'], ['words', 'posts', 'followers'], ['follows', 'favs', 'reviews'], ['status', 'published']].forEach(item => {
                         const getSpan = metatype => descriptionDiv.querySelector('.' + metatype + 'metatype');
                         const metatype = item.find(getSpan);
@@ -190,11 +184,11 @@ async function main() {
             id = chapSelect ? id : element.querySelector('a')?.href.match(/fanfiction\.net\/s\/(\d+)/)?.[1];
             if (!chapSelect && id && bookmarkDir[id]?.chapter) {
                 element.style.backgroundColor = '#e1edff';
-                const bookmarkIcon = document.createElement('img');
-                bookmarkIcon.src = chrome.runtime.getURL('icons/bookmark1.png');
-                bookmarkIcon.width = '14';
-                bookmarkIcon.height = '14';
-                element.querySelector('div').before(bookmarkIcon);
+                element.querySelector('div').before(Object.assign(document.createElement('img'), {
+                    src: chrome.runtime.getURL('icons/bookmark1.png'),
+                    width: 14,
+                    height: 14
+                }));
             }
         });
 
@@ -205,10 +199,8 @@ async function main() {
             const followButton = document.querySelector('.icon-heart');
             const chaptersCount = document.querySelector('.chaptersmetatype-val');
             const chapter = Number(chapSelect.options[chapSelect.selectedIndex].innerText.split('.')[0]);
-            const iconUnmarkedUrl = chrome.runtime.getURL('icons/bookmark2.png');
-            const iconMarkedUrl = chrome.runtime.getURL('icons/bookmark1.png');
-            const iconUnmarked = `<img src="${iconUnmarkedUrl}" width="20" height="20">`;
-            const iconMarked = `<img src="${iconMarkedUrl}" width="20" height="20">`;
+            const iconUnmarked = `<img src="${chrome.runtime.getURL('icons/bookmark2.png')}" width="20" height="20">`;
+            const iconMarked = `<img src="${chrome.runtime.getURL('icons/bookmark1.png')}" width="20" height="20">`;
             let isBookmarked = false, lastChapterBookmark = -1;
             let fandom = preStoryLinks?.[1]?.innerText || preStoryLinks?.[0]?.innerText || '';
             if (settings.chapterWordCounter) {
@@ -231,9 +223,8 @@ async function main() {
                         chrome.runtime.sendMessage({ message: 'del-bookmark', id });
                     }
                 });
-                const navigationBar = chapSelect.parentElement;
-                Object.assign(navigationBar.style, { float: '', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '20px', gap: '5px' });
-                navigationBar.prepend(bookmarkButton);
+                Object.assign(chapSelect.parentElement.style, { float: '', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '20px', gap: '5px' });
+                chapSelect.parentElement.prepend(bookmarkButton);
                 const goButton = document.createElement('button');
                 goButton.type = 'button';
                 goButton.className = 'btn pull-right';
@@ -305,7 +296,7 @@ async function main() {
                                 } else {
                                     if (lastChapterBookmark !== -1) document.querySelector(`#bookmark${lastChapterBookmark}`).click();
                                     lastChapterBookmark = chapNum; isBookmarked = true;
-                                    element.innerHTML = `<img src=\"${iconMarkedUrl}\" width=\"20\" height=\"20\">`;
+                                    element.innerHTML = iconMarked;
                                     chrome.runtime.sendMessage({ message: 'set-bookmark', chapter: chapNum, id, fandom, author: profileAuthor, storyName });
                                 }
                             });
