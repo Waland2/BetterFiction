@@ -274,33 +274,54 @@ async function main() {
                     const count = Number(chaptersCount.innerText);
                     const chaptersName = Array.from(chapSelect.options).map(o => o.textContent);
                     let storyTextElem = document.querySelector('#storytext');
-                    for (let i = 0; i < count; i++) {
-                        try {
-                            const chapterElem = new DOMParser().parseFromString(
-                                await (await fetch(getChapterURL(i + 1))).text(),
-                                'text/html'
-                            ).querySelector('#storytext');
-                            if (!chapterElem) break;
-                            chapterElem.id = `storytext${i + 1}`;
-                            if (settings.chapterWordCounter && i + 1 !== chapter) {
-                                let wc = 0;
-                                chapterElem.querySelectorAll('p').forEach(p => wc += p.innerText.trim().split(/\s+/).length);
-                                chaptersName[i] += ` - ${wc} words`;
-                            }
-                            storyTextElem.before(chapterElem);
-                            chapterElem.before(sepSpan(i, chaptersName, storyTextElem.className));
-                            storyContrastButton.click();
-                            storyContrastButton.click();
-                        } catch (e) { console.error('Failed to fetch chapter', getChapterURL(i + 1), e); break; }
-                    }
-                    storyTextElem.before(sepSpan(count, chaptersName, storyTextElem.className));
+                    const finalSpan = sepSpan(count, chaptersName, storyTextElem.className);
+                    storyTextElem.before(finalSpan);
                     storyTextElem.remove();
-                    const allFicTextElem = document.querySelector('#storytext1').parentElement;
-                    allFicTextElem.id = 'storytext';
-                    if (settings.allowCopy) allFicTextElem.querySelectorAll('*').forEach(e => e.style.userSelect = 'text');
-                    if (settings.bookmarkButton) {
-                        document.querySelectorAll(`#bookmark${lastChapterBookmark}`).forEach(e => e.innerHTML = iconMarked);
-                    }
+                    let start = 0;
+                    const loadMoreButton = Object.assign(document.createElement('button'), {
+                        type: 'button',
+                        className: 'btn pull-right',
+                        textContent: 'Load more chapters',
+                        onclick: async () => {
+                            loadMoreButton.style.display = 'none';
+                            for (let i = start; i < count; i++) {
+                                try {
+                                    const response = await fetch(getChapterURL(i + 1));
+                                    if (!response.ok) {
+                                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                    }
+                                    const chapterElem = new DOMParser().parseFromString(
+                                        await response.text(),
+                                        'text/html'
+                                    ).querySelector('#storytext');
+                                    if (!chapterElem) break;
+                                    chapterElem.id = `storytext${i + 1}`;
+                                    if (settings.chapterWordCounter && i + 1 !== chapter) {
+                                        let wc = 0;
+                                        chapterElem.querySelectorAll('p').forEach(p => wc += p.innerText.trim().split(/\s+/).length);
+                                        chaptersName[i] += ` - ${wc} words`;
+                                    }
+                                    finalSpan.before(chapterElem);
+                                    chapterElem.before(sepSpan(i, chaptersName, finalSpan.className));
+                                    storyContrastButton.click();
+                                    storyContrastButton.click();
+                                } catch (e) {
+                                    console.error('Failed to fetch chapter', getChapterURL(i + 1), e);
+                                    start = i;
+                                    loadMoreButton.style.display = '';
+                                    break;
+                                }
+                                const allFicTextElem = document.querySelector('#storytext1').parentElement;
+                                allFicTextElem.id = 'storytext';
+                                if (settings.allowCopy) allFicTextElem.querySelectorAll('*').forEach(e => e.style.userSelect = 'text');
+                                if (settings.bookmarkButton) {
+                                    document.querySelectorAll(`#bookmark${lastChapterBookmark}`).forEach(e => e.innerHTML = iconMarked);
+                                }            
+                            }
+                        }
+                    });
+                    finalSpan.querySelector('hr').after(loadMoreButton);
+                    loadMoreButton.click();
                 });
                 followButton.after(allFicButton);
             }
