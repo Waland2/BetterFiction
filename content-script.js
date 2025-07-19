@@ -5,13 +5,10 @@
  */
 async function main() {
     try {
-        let id;
         const settings = await new Promise(resolve => chrome.runtime.sendMessage({ message: 'get-info' }, r => resolve(r.result)));
 
         const topMenu = document.querySelector('div')?.querySelector('div');
         if (!topMenu || topMenu.classList[0] !== 'menulink') return;
-
-        const storyContrastButton = document.querySelector("[title='Story Contrast']");
 
         if (settings.allowCopy) document.querySelectorAll('p').forEach(e => e.style.userSelect = 'text');
 
@@ -72,7 +69,6 @@ async function main() {
             const placeElem = document.querySelector(`#${place}`);
             const sortButton = document.querySelector(`[onclick="stories_init(${place}_array,'.${storyType}');${place}_array.sort(sortByReviews); storylist_draw('${place}_inside', ${place}_array, 1, 1, ${sortType});"]`);
             if (!sortButton || !placeElem) return;
-            const array = Array.from(placeElem.querySelectorAll(`.${storyType}`));
             const storyContainer = document.querySelector(`#${place}_inside`);
             ['Follows', 'Favs'].forEach(metatype => {
                 sortButton.before(Object.assign(document.createElement('span'), {
@@ -95,9 +91,10 @@ async function main() {
                 .catch(() => resolve({}));
         }) : {};
 
+        const storyContrastButton = document.querySelector("[title='Story Contrast']");
         const chapSelect = document.querySelector('#chap_select');
-        const allParagraphs = Array.from(document.querySelectorAll('p'));
         const allChapSelects = Array.from(document.querySelectorAll('#chap_select'));
+        let id;
 
         imagesParent.forEach(element => {
             settings.separateFics && Object.assign(element.style, {
@@ -108,7 +105,7 @@ async function main() {
                 const img = element.querySelector('.cimage');
                 img && Object.assign(img.style, { width: '75px', height: '100px' });
             }
-            const descriptionDiv = chapSelect ? element.parentElement : element.querySelector('div')?.querySelector('div');
+            const descriptionDiv = storyContrastButton ? element.parentElement : element.querySelector('div')?.querySelector('div');
             if (descriptionDiv) {
                 const splitByRated = descriptionDiv.innerText.split(' - Rated: ');
                 if (splitByRated.length > 1) {
@@ -130,15 +127,12 @@ async function main() {
                     });
                 });
                 if (metaSpans[1]?.classList.contains('ratedmetatype')) metaSpans[0].innerHTML = metaSpans[0].innerHTML.replaceAll('[@]', ' - ');
-                let notDone = ['language', 'genre', 'characters'], nextMetaType;
+                let notDone = ['language', 'genre', 'characters'];
                 const allGenres = 'AdventureAngstCrimeDramaFamilyFantasyFriendshipGeneralHorrorHumorHurt/ComfortMysteryParodyPoetryRomanceSci-FiSpiritualSupernaturalSuspenseTragedyWestern';
-                let span = descriptionDiv.querySelector(':not([class])');
-                while (span) {
+                descriptionDiv.querySelectorAll(':not([class])').forEach(span => {
                     if (notDone[0] === 'genre' && !span.innerText.split('/').every(genre => allGenres.includes(genre))) notDone.shift();
-                    nextMetaType = notDone.shift() || nextMetaType;
-                    span.classList = nextMetaType + 'metatype';
-                    span = descriptionDiv.querySelector(':not([class])');
-                }
+                    span.classList = (notDone.shift() || 'characters') + 'metatype';
+                });
                 Object.keys(METATYPES).forEach(metaType => {
                     const className = metaType.toLowerCase() + 'metatype';
                     const span = descriptionDiv.querySelector('.' + className);
@@ -181,8 +175,8 @@ async function main() {
                     if (storyContrastButton) storyContrastButton.onclick = colorMetaTypes;
                 }
             }
-            id = chapSelect ? id : element.querySelector('a')?.href.match(/fanfiction\.net\/s\/(\d+)/)?.[1];
-            if (!chapSelect && id && bookmarkDir[id]?.chapter) {
+            id = storyContrastButton ? id : element.querySelector('a')?.href.match(/fanfiction\.net\/s\/(\d+)/)?.[1];
+            if (!storyContrastButton && id && bookmarkDir[id]?.chapter) {
                 element.style.backgroundColor = '#e1edff';
                 element.querySelector('div').before(Object.assign(document.createElement('img'), {
                     src: chrome.runtime.getURL('icons/bookmark1.png'),
@@ -192,64 +186,82 @@ async function main() {
             }
         });
 
-        if (chapSelect) {
+        if (storyContrastButton) {
             const storyName = Array.from(document.querySelectorAll('b'))?.[5]?.innerText || '';
             const profileAuthor = document.querySelector('#profile_top a')?.innerText || '';
             const preStoryLinks = document.querySelector('#pre_story_links')?.querySelectorAll('a');
             const followButton = document.querySelector('.icon-heart');
             const chaptersCount = document.querySelector('.chaptersmetatype-val');
-            const chapter = Number(chapSelect.options[chapSelect.selectedIndex].innerText.split('.')[0]);
+            const chapter = chapSelect ? Number(chapSelect.options[chapSelect.selectedIndex].innerText.split('.')[0]) : 1;
             const iconUnmarked = `<img src="${chrome.runtime.getURL('icons/bookmark2.png')}" width="20" height="20">`;
             const iconMarked = `<img src="${chrome.runtime.getURL('icons/bookmark1.png')}" width="20" height="20">`;
             let lastChapterBookmark = 0;
             let fandom = preStoryLinks?.[1]?.innerText || preStoryLinks?.[0]?.innerText || '';
             if (settings.chapterWordCounter) {
                 let wordCounter = 0;
-                allParagraphs.forEach(e => wordCounter += e.innerText.trim().split(/\s+/).length);
+                Array.from(document.querySelectorAll('p')).forEach(e => wordCounter += e.innerText.trim().split(/\s+/).length);
                 allChapSelects.forEach(e => e.options[e.selectedIndex].textContent += ` - ${wordCounter} words`);
             }
-            if (settings.bookmarkButton) {
-                const bookmarkButton = document.createElement('button');
-                bookmarkButton.type = 'button';
-                bookmarkButton.className = 'btn';
-                bookmarkButton.title = 'bookmark';
-                bookmarkButton.innerHTML = iconUnmarked;
-                bookmarkButton.addEventListener('click', () => {
-                    if (lastChapterBookmark !== chapter) {
-                        lastChapterBookmark = chapter;
-                        bookmarkButton.innerHTML = iconMarked;
-                        chrome.runtime.sendMessage({ message: 'set-bookmark', chapter: chapter, id, fandom, author: profileAuthor, storyName });
-                    } else {
+            const goButton = document.createElement('button');
+            const createBookmarkButton = (chapNum, isFirst = true) => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn pull-right bookmark';
+                button.title = 'bookmark';
+                button.innerHTML = iconUnmarked;
+                button.style.height = '30px';
+                button.id = `bookmark${chapNum}`;
+                button.addEventListener('click', () => {
+                    if (lastChapterBookmark === chapNum) {
                         lastChapterBookmark = 0;
-                        bookmarkButton.innerHTML = iconUnmarked;
+                        button.innerHTML = iconUnmarked;
+                        goButton.style.display = 'none';
                         chrome.runtime.sendMessage({ message: 'del-bookmark', id });
+                    } else {
+                        const prevButton = document.querySelector(`#bookmark${lastChapterBookmark}`);
+                        if (prevButton) prevButton.click();
+                        lastChapterBookmark = chapNum;
+                        button.innerHTML = iconMarked;
+                        if (isFirst) goButton.style.display = 'none';
+                        else goButton.style.display = '';
+                        chrome.runtime.sendMessage({ message: 'set-bookmark', chapter: chapNum, id, fandom, author: profileAuthor, storyName });
                     }
                 });
-                Object.assign(chapSelect.parentElement.style, { float: '', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '20px', gap: '5px' });
-                chapSelect.parentElement.prepend(bookmarkButton);
-                const goButton = document.createElement('button');
+                return button;
+            };
+            if (settings.bookmarkButton) {
+                const bookmarkButton = createBookmarkButton(chapter);
+                const selectionDiv = chapSelect ? chapSelect.parentElement : document.querySelector('[style="float:right; "]');
+                Object.assign(selectionDiv.style, { float: '', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '20px', gap: '5px' });
+                selectionDiv.prepend(bookmarkButton);
                 goButton.type = 'button';
                 goButton.className = 'btn pull-right';
                 goButton.textContent = 'Go to bookmark';
                 goButton.style.marginRight = '5px';
+                goButton.style.display = 'none';
                 goButton.addEventListener('click', () => {
-                    chrome.runtime.sendMessage({ message: 'get-bookmark', id }, r => {
-                        if (Number(r.chapter)) window.open(`https://www.fanfiction.net/s/${r.id}/${r.chapter}/${r.storyName}`, '_self');
-                    });
+                    const bookmarkedChapter = document.querySelector(`#storytext${lastChapterBookmark}`);
+                    if (bookmarkedChapter) bookmarkedChapter.scrollIntoView({ behavior: 'smooth' });
+                    else window.open(`https://www.fanfiction.net/s/${id}/${lastChapterBookmark}/${storyName}`, '_self');
                 });
                 followButton.after(goButton);
                 if (settings.autoSave) chrome.runtime.sendMessage({ message: 'auto-bookmark', chapter, id }, r => { if (r.status) bookmarkButton.click(); });
-                chrome.runtime.sendMessage({ message: 'get-bookmark', id }, r => {
-                    lastChapterBookmark = Number(r.chapter);
+                if (bookmarkDir[id]?.chapter) {
+                    lastChapterBookmark = Number(bookmarkDir[id].chapter);
                     if (lastChapterBookmark === chapter) bookmarkButton.innerHTML = iconMarked;
-                });
+                    else goButton.style.display = '';
+                }
             }
-            if (settings.allFicButton) {
+            if (settings.allFicButton && chaptersCount) {
                 const getChapterURL = n => `https://www.fanfiction.net/s/${id}/${n}`;
-                const sepSpan = (i, arr, className) => Object.assign(document.createElement('span'), {
-                    className,
-                    innerHTML: '<br><br><br><br>' + (i !== arr.length ? `<h3>${arr[i]}</h3>${settings.bookmarkButton ? `<button type="button" class="btn pull-right bookmark" title="bookmark" style="margin-right: 5px; height: 30px;" id="bookmark${i + 1}">${iconUnmarked}</button>` : ''}` : '') + '<hr size="1" noshade style="background: darkgrey; height: 2px;"><br><br><br>'
-                });
+                const sepSpan = (i, arr, className) => {
+                    const span = Object.assign(document.createElement('span'), {
+                        className,
+                        innerHTML: '<br><br><br><br>' + (i !== arr.length ? `<h3>${arr[i]}</h3>` : '') + '<hr size="1" noshade style="background: darkgrey; height: 2px;"><br><br><br>'
+                    });
+                    i !== arr.length && settings.bookmarkButton && span.querySelector('h3').after(createBookmarkButton(i + 1, false));
+                    return span;
+                };
                 const allFicButton = document.createElement('button');
                 allFicButton.type = 'button';
                 allFicButton.className = 'btn pull-right';
@@ -257,53 +269,59 @@ async function main() {
                 allFicButton.style.marginRight = '5px';
                 allFicButton.addEventListener('click', async () => {
                     allFicButton.style.display = 'none';
+                    if (lastChapterBookmark) goButton.style.display = '';
                     allChapSelects.forEach(e => e.parentElement.style.display = 'none');
                     const count = Number(chaptersCount.innerText);
                     const chaptersName = Array.from(chapSelect.options).map(o => o.textContent);
                     let storyTextElem = document.querySelector('#storytext');
-                    for (let i = 0; i < count; i++) {
-                        try {
-                            const chapterElem = new DOMParser().parseFromString(
-                                await (await fetch(getChapterURL(i + 1))).text(),
-                                'text/html'
-                            ).querySelector('#storytext');
-                            if (!chapterElem) break;
-                            chapterElem.id = `storytext${i + 1}`;
-                            if (settings.chapterWordCounter && i + 1 !== chapter) {
-                                let wc = 0;
-                                chapterElem.querySelectorAll('p').forEach(p => wc += p.innerText.trim().split(/\s+/).length);
-                                chaptersName[i] += ` - ${wc} words`;
-                            }
-                            storyTextElem.before(chapterElem);
-                            chapterElem.before(sepSpan(i, chaptersName, storyTextElem.className));
-                            storyContrastButton.click();
-                            storyContrastButton.click();
-                        } catch (e) { console.error('Failed to fetch chapter', getChapterURL(i + 1), e); break; }
-                    }
-                    storyTextElem.before(sepSpan(count, chaptersName, storyTextElem.className));
+                    const finalSpan = sepSpan(count, chaptersName, storyTextElem.className);
+                    storyTextElem.before(finalSpan);
                     storyTextElem.remove();
-                    const allFicTextElem = document.querySelector('#storytext1').parentElement;
-                    allFicTextElem.id = 'storytext';
-                    if (settings.allowCopy) allFicTextElem.querySelectorAll('*').forEach(e => e.style.userSelect = 'text');
-                    if (settings.bookmarkButton) {
-                        Array.from(document.querySelectorAll('.bookmark')).forEach(element => {
-                            element.addEventListener('click', () => {
-                                const chapNum = Number(element.id.replace(/\D/g, ''));
-                                if (lastChapterBookmark === chapNum) {
-                                    lastChapterBookmark = 0;
-                                    element.innerHTML = iconUnmarked;
-                                    chrome.runtime.sendMessage({ message: 'del-bookmark', id });
-                                } else {
-                                    if (lastChapterBookmark) document.querySelector(`#bookmark${lastChapterBookmark}`).click();
-                                    lastChapterBookmark = chapNum;
-                                    element.innerHTML = iconMarked;
-                                    chrome.runtime.sendMessage({ message: 'set-bookmark', chapter: chapNum, id, fandom, author: profileAuthor, storyName });
+                    let start = 0;
+                    const loadMoreButton = Object.assign(document.createElement('button'), {
+                        type: 'button',
+                        className: 'btn pull-right',
+                        textContent: 'Load more chapters',
+                        onclick: async () => {
+                            loadMoreButton.style.display = 'none';
+                            for (let i = start; i < count; i++) {
+                                try {
+                                    const response = await fetch(getChapterURL(i + 1));
+                                    if (!response.ok) {
+                                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                    }
+                                    const chapterElem = new DOMParser().parseFromString(
+                                        await response.text(),
+                                        'text/html'
+                                    ).querySelector('#storytext');
+                                    if (!chapterElem) break;
+                                    chapterElem.id = `storytext${i + 1}`;
+                                    if (settings.chapterWordCounter && i + 1 !== chapter) {
+                                        let wc = 0;
+                                        chapterElem.querySelectorAll('p').forEach(p => wc += p.innerText.trim().split(/\s+/).length);
+                                        chaptersName[i] += ` - ${wc} words`;
+                                    }
+                                    finalSpan.before(chapterElem);
+                                    chapterElem.before(sepSpan(i, chaptersName, finalSpan.className));
+                                    storyContrastButton.click();
+                                    storyContrastButton.click();
+                                } catch (e) {
+                                    console.error('Failed to fetch chapter', getChapterURL(i + 1), e);
+                                    start = i;
+                                    loadMoreButton.style.display = '';
+                                    break;
                                 }
-                            });
-                        });
-                        const bookmarkElement = document.querySelector(`#bookmark${lastChapterBookmark}`);
-                        if (bookmarkElement) bookmarkElement.innerHTML = iconMarked;
-                    }
+                                const allFicTextElem = document.querySelector('#storytext1').parentElement;
+                                allFicTextElem.id = 'storytext';
+                                if (settings.allowCopy) allFicTextElem.querySelectorAll('*').forEach(e => e.style.userSelect = 'text');
+                                if (settings.bookmarkButton) {
+                                    document.querySelectorAll(`#bookmark${lastChapterBookmark}`).forEach(e => e.innerHTML = iconMarked);
+                                }            
+                            }
+                        }
+                    });
+                    finalSpan.querySelector('hr').after(loadMoreButton);
+                    loadMoreButton.click();
                 });
                 followButton.after(allFicButton);
             }
