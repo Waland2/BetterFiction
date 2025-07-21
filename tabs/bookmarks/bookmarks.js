@@ -4,11 +4,9 @@ const bookmarkLinks = [];
 const formatDate = (addTime) => {
     if (!addTime) return '-';
     if (addTime.includes('/')) {
-        // Legacy format: DD/MM/YYYY
         const [day, month, year] = addTime.split('/');
         return `${month}.${day}.${year}`;
     } else {
-        // New ISO format
         const date = new Date(addTime);
         const day = date.getDate().toString().padStart(2, '0');
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -20,10 +18,10 @@ const formatDate = (addTime) => {
 function sortBookmarks(bookmarks, sortType, sortDirection) {
     if (sortType === 'addTime') {
         bookmarks.sort((a, b) => {
-            if (a.formattedDate === '-') return 1;
-            if (b.formattedDate === '-') return -1;
-            const aDate = a.formattedDate.replaceAll('.', '/');
-            const bDate = b.formattedDate.replaceAll('.', '/');
+            if (a.displayDate === '-') return 1;
+            if (b.displayDate === '-') return -1;
+            const aDate = a.displayDate.replaceAll('.', '/');
+            const bDate = b.displayDate.replaceAll('.', '/');
             return new Date(bDate) - new Date(aDate);
         });
     } else {
@@ -47,83 +45,55 @@ function renderBookmarks(bookmarks) {
 
 function createBookmarkRow(bookmark) {
     const tableRow = document.createElement('tr');
-    tableRow.innerHTML = `<tr>
+    tableRow.innerHTML = `
         <td>${bookmark.id}</td>
         <td><a href="https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}/${bookmark.storyName.replaceAll(' ', '-')}">${bookmark.storyName}</a></td>
         <td>${bookmark.chapter}</td>
         <td>${bookmark.fandom}</td>
         <td>${bookmark.author}</td>
-        <td>${formatDate(bookmark.formattedDate)}</td>
-        <td><a href="">Delete</a></td>
-    </tr>`;
-    tableRow.querySelectorAll('a')[1].addEventListener('click', () => {
-        chrome.storage.local.remove(bookmark.id).catch(e => console.error(`Failed to delete bookmark for story ${bookmark.id}:`, e));
+        <td>${bookmark.displayDate}</td>
+        <td><a href="#">Delete</a></td>
+    `;
+    tableRow.querySelectorAll('a')[1].addEventListener('click', (e) => {
+        e.preventDefault();
+        chrome.storage.local.remove(bookmark.id).catch(err =>
+            console.error(`Failed to delete bookmark for story ${bookmark.id}:`, err)
+        );
         tableRow.remove();
     });
     tableRow.classList.toggle('table-row');
     return tableRow;
 }
 
-// Compatibility for bookmarks created before format change
+// Normalize and load bookmarks
 chrome.storage.local.get().then((result) => {
-    console.log(result)
-    let bookmarks = result;
-    let updated = false;
-    for (const key in bookmarks) {
-        const bookmark = result[key];
-        if (bookmark.hasOwnProperty("fandomName")) {
-            bookmarks[key].fandom = bookmark.fandomName;
-            delete bookmarks[key].fandomName;
-            updated = true;
-        }
-
-        if (bookmark.hasOwnProperty("storyId")) {
-            bookmarks[key].id = bookmark.storyId;
-            delete bookmarks[key].storyId;
-            updated = true;
-        }
-
-        if (bookmark.addTime.search("/") !== -1) {
-            const [day, month, year] = bookmark.addTime.split("/");
-            bookmarks[key].addTime = new Date(`${year}-${month}-${day}T00:00:00.000Z`).toISOString();
-            updated = true;
-        }
-    }
-
-    if (updated) {
-        chrome.storage.local.clear()
-            .then(() => chrome.storage.local.set(bookmarks))
-            .then(() => location.reload())
-            .catch(console.error);
-    }
-})
-.catch((error) => {
-    console.error('Failed to load bookmarks from local storage:', error);
-});
-
-// Compatibility for bookmarks created before format change
-chrome.storage.local.get().then((result) => {
-    console.log(result)
     let bookmarks = result;
     let needToUpdate = false;
+
     for (const key in bookmarks) {
-        const bookmark = result[key];
-        if (bookmark.hasOwnProperty("fandomName")) {
-            bookmarks[key].fandom = bookmark.fandomName;
-            delete bookmarks[key].fandomName;
+        const bookmark = bookmarks[key];
+
+        if (bookmark.fandomName) {
+            bookmark.fandom = bookmark.fandomName;
+            delete bookmark.fandomName;
             needToUpdate = true;
         }
 
-        if (bookmark.hasOwnProperty("storyId")) {
-            bookmarks[key].id = bookmark.storyId;
-            delete bookmarks[key].storyId;
+        if (bookmark.storyId) {
+            bookmark.id = bookmark.storyId;
+            delete bookmark.storyId;
             needToUpdate = true;
         }
 
-        if (bookmark.addTime.search("/") !== -1) {
-            const [day, month, year] = bookmark.addTime.split("/");
-            bookmarks[key].addTime = new Date(`${year}-${month}-${day}T00:00:00.000Z`).toISOString();
+        if (bookmark.addTime?.includes('/')) {
+            const [day, month, year] = bookmark.addTime.split('/');
+            bookmark.addTime = new Date(`${year}-${month}-${day}T00:00:00.000Z`).toISOString();
             needToUpdate = true;
+        }
+
+        if (bookmark.storyName) {
+            bookmark.displayDate = formatDate(bookmark.addTime);
+            bookmarkLinks.push(bookmark);
         }
     }
 
@@ -132,67 +102,74 @@ chrome.storage.local.get().then((result) => {
             .then(() => chrome.storage.local.set(bookmarks))
             .then(() => location.reload())
             .catch(console.error);
+    } else {
+        sortBookmarks(bookmarkLinks, 'addTime', 0);
+        renderBookmarks(bookmarkLinks);
     }
-})
-.catch((error) => {
+}).catch((error) => {
     console.error('Failed to load bookmarks from local storage:', error);
 });
 
-chrome.storage.local.get()
-    .then((result) => {
-        for (const key in result) {
-            const bookmark = result[key];
-            if (bookmark.storyName) {
-                bookmark.formattedDate = formatDate(bookmark.addTime);
-                bookmarkLinks.push(bookmark);
-            }
-        }
-        sortBookmarks(bookmarkLinks, 'addTime', 0);
-        renderBookmarks(bookmarkLinks);
-    })
-    .catch((error) => {
-        console.error('Failed to load bookmarks from local storage:', error);
-    });
-
+// Export bookmarks
 document.querySelector('#export').addEventListener('click', () => {
     chrome.storage.local.get().then(result => {
-        const exportBlob = new Blob([JSON.stringify(result)], { type: 'application/json;charset=utf-8' });
-        const downloadLink = document.createElement('a');
-        downloadLink.href = URL.createObjectURL(exportBlob);
-        downloadLink.download = 'bookmarks.json';
-        downloadLink.click();
+        const blob = new Blob([JSON.stringify(result)], { type: 'application/json;charset=utf-8' });
+        const link = Object.assign(document.createElement('a'), {
+            href: URL.createObjectURL(blob),
+            download: 'bookmarks.json'
+        });
+        link.click();
     }).catch(e => console.error('Failed to export bookmarks to JSON file:', e));
 });
 
+// Import bookmarks
 document.querySelector('#import').addEventListener('click', () => {
     const fileInput = Object.assign(document.createElement('input'), { type: 'file' });
+
     fileInput.onchange = e => {
         const file = e.target.files[0];
-        const fileReader = new FileReader();
-        fileReader.onload = e => {
+        const reader = new FileReader();
+
+        reader.onload = e => {
             try {
                 const jsonData = JSON.parse(e.target.result);
-                chrome.storage.local.clear().then(() => {
-                    Object.entries(jsonData).forEach(([key, value]) => {
-                        chrome.storage.local.set({ [key]: value });
-                    });
-                }).catch(err => console.error('Failed to import bookmarks from JSON file:', err));
+                chrome.storage.local.clear()
+                    .then(() => {
+                        const sets = Object.entries(jsonData).map(([key, value]) =>
+                            chrome.storage.local.set({ [key]: value })
+                        );
+                        return Promise.all(sets);
+                    })
+                    .then(() => location.reload())
+                    .catch(err => console.error('Failed to import bookmarks from JSON file:', err));
             } catch (err) {
                 console.error('Failed to parse imported JSON file:', err);
             }
         };
-        fileReader.readAsText(file);
-        location.reload();
+
+        reader.readAsText(file);
     };
+
     fileInput.click();
 });
 
-document.querySelectorAll('th[data-sort-type]').forEach(element => {
-    element.addEventListener('click', () => {
-        const sortType = element.getAttribute('data-sort-type');
-        const sortDirection = element.classList.contains('active') ? 1 : 0;
-        document.querySelectorAll('th').forEach(header => header.classList.remove('active'));
-        element.classList.add('active');
+// Sorting
+document.querySelectorAll('th[data-sort-type]').forEach(header => {
+    header.addEventListener('click', () => {
+        const sortType = header.getAttribute('data-sort-type');
+        let sortDirection = 0;
+
+        if (header.classList.contains('descending')) {
+            header.classList.remove('descending');
+            sortDirection = 0;
+        } else {
+            header.classList.add('descending');
+            sortDirection = 1;
+        }
+
+        document.querySelectorAll('th').forEach(h => h.classList.remove('active'));
+        header.classList.add('active');
+
         try {
             sortBookmarks(bookmarkLinks, sortType, sortDirection);
             renderBookmarks(bookmarkLinks);
