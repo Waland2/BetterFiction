@@ -75,21 +75,24 @@ async function main() {
                     innerHTML: metatype,
                     className: 'gray',
                     onclick: () => {
-                        Array.from(placeElem.querySelectorAll(`.${storyType}`)).sort((a, b) => {
+                        const sorted = Array.from(placeElem.querySelectorAll(`.${storyType}`)).sort((a, b) => {
                             const get = s => Number(s.querySelector(`.${metatype.toLowerCase()}metatype-val`)?.innerText.replaceAll(',', '')) || 0;
                             return get(b) - get(a);
-                        }).forEach(e => storyContainer.appendChild(e));
+                        });
                         placeElem.querySelectorAll(`.${storyType}`).forEach(e => e.remove());
+                        sorted.forEach(e => storyContainer.appendChild(e));
                     }
                 }), document.createTextNode(' . '));
             });
         });
 
-        const bookmarkDir = settings.markFicWithBookmark ? await new Promise(resolve => {
+        const bookmarkDir = await new Promise(resolve => {
             chrome.runtime.sendMessage({ message: 'get-dir' })
-                .then(r => resolve(r.result))
+                .then(r => {
+                    resolve(r.result)
+                })
                 .catch(() => resolve({}));
-        }) : {};
+        });
 
         const storyContrastButton = document.querySelector("[title='Story Contrast']");
         const chapSelect = document.querySelector('#chap_select');
@@ -234,6 +237,7 @@ async function main() {
                 const selectionDiv = chapSelect ? chapSelect.parentElement : document.querySelector('[style="float:right; "]');
                 Object.assign(selectionDiv.style, { float: '', display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginTop: '20px', gap: '5px' });
                 selectionDiv.prepend(bookmarkButton);
+                goButton.id = "gobutton"; // TODO
                 goButton.type = 'button';
                 goButton.className = 'btn pull-right';
                 goButton.textContent = 'Go to bookmark';
@@ -316,7 +320,7 @@ async function main() {
                                 if (settings.allowCopy) allFicTextElem.querySelectorAll('*').forEach(e => e.style.userSelect = 'text');
                                 if (settings.bookmarkButton) {
                                     document.querySelectorAll(`#bookmark${lastChapterBookmark}`).forEach(e => e.innerHTML = iconMarked);
-                                }            
+                                }
                             }
                         }
                     });
