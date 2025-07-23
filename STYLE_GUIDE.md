@@ -6,25 +6,23 @@
 - Use `const` by default for variables that won't be reassigned
 - Use `let` only when the variable needs to be reassigned
 - Avoid `var` entirely
-- Declare variables at the top of their scope when possible
+- Declare variables at the top of their minimum scope when possible
 
 ### 2. Function Declarations
 - Use `function` declarations for named functions
 - Use arrow functions for anonymous functions and callbacks
 - Use `async/await` instead of Promise chains when possible
-- Keep functions focused and under 50 lines when possible
+- Keep functions focused and under 50 lines when possible (need to eventually modularize main)
 
 ### 3. Promise Handling
 - Always use `.catch()` for error handling
 - Format Promise chains with proper indentation:
 ```javascript
-chrome.storage.sync.get('settings')
-    .then((result) => {
-        // handle result
-    })
-    .catch((error) => {
-        console.error('Error message:', error);
-    });
+chrome.storage.sync.get('settings').then((result) => {
+    // handle result
+}).catch((error) => {
+    console.error('Error message:', error);
+});
 ```
 
 ### 4. Error Handling
@@ -37,7 +35,7 @@ chrome.storage.sync.get('settings')
 - Use single quotes for strings consistently
 - Add semicolons at the end of statements
 - Use consistent spacing around operators and brackets
-- Maximum line length: 100 characters
+- ~~Maximum line length: 100 characters~~ (broken for some html strings, but generally don't try to cram)
 
 ### 6. Naming Conventions
 - Use camelCase for variables and functions
@@ -46,9 +44,9 @@ chrome.storage.sync.get('settings')
 - Use descriptive names that explain the purpose
 
 ### 7. Comments
-- Add comments for complex logic
+- ~~Add comments for complex logic~~ its all self explanatory, amirite?
 - Use JSDoc style comments for functions
-- Keep comments up to date with code changes
+- Keep comments up to date with code changes (yeah gotta add em back)
 
 ### 8. DOM Manipulation
 - Cache DOM queries when used multiple times
@@ -73,7 +71,6 @@ chrome.storage.sync.get('settings')
 - Avoid overly specific selectors
 
 ### 3. Properties
-- Use shorthand properties when possible
 - Use consistent units (px, %, em, rem)
 - Use consistent color formats
 
@@ -96,11 +93,6 @@ chrome.storage.sync.get('settings')
 - Keep related files together
 - Use descriptive directory names
 - Maintain consistent file naming
-
-### 2. Import/Export
-- Group imports at the top of files
-- Use consistent import ordering
-- Remove unused imports
 
 ## Performance Considerations
 
