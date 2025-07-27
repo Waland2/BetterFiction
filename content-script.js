@@ -19,14 +19,14 @@ const main = async () => {
 
         if (settings.bookmarkButton) {
             topMenu.appendChild(Object.assign(document.createElement('span'), {
-                innerHTML: `<a href='${chrome.runtime.getURL('tabs/bookmarks/bookmarks.html')}' style='margin-left: 10px;'><img src='${chrome.runtime.getURL('icons/bookmark3.png')}' style='vertical-align: middle; cursor: default;' title='Favorite Stories' width='20' height='20'></a>`,
+                innerHTML: `<a href='${chrome.runtime.getURL('tabs/bookmarks/bookmarks.html')}' style='margin-left: 10px;'><img src='${chrome.runtime.getURL('icons/bookmarks.svg')}' style='vertical-align: middle; cursor: default;' title='Favorite Stories' width='20' height='20'></a>`,
                 id: 'openBookmarkList'
             }));
         }
 
         if (settings.myFicList) {
             topMenu.appendChild(Object.assign(document.createElement('span'), {
-                innerHTML: `<img src='${chrome.runtime.getURL('icons/list.png')}' style='vertical-align: middle; cursor: default; margin-left: 12px;' title='My fic list' width='20' height='20'>`,
+                innerHTML: `<img src='${chrome.runtime.getURL('icons/list.svg')}' style='vertical-align: middle; cursor: default; margin-left: 12px;' title='My fic list' width='20' height='20'>`,
                 id: 'openMyFicList'
             })).addEventListener('click', () => {
                 sendMessage({ message: 'open-html-page', fileName: 'tabs/my-list/my-list.html' });
@@ -38,7 +38,7 @@ const main = async () => {
                 style: 'position: relative; display: inline-block; margin-bottom: 0px;'
             }));
             topMenu.lastChild.attachShadow({ mode: 'open' }).appendChild(Object.assign(document.createElement('span'), {
-                innerHTML: `<a href='https://www.fanfiction.net/favorites/story.php' style='margin-left: 10px;'><img src='${chrome.runtime.getURL('icons/heart.png')}' style='vertical-align: middle; cursor: default;' title='Favorite Stories' width='20' height='20'></a><a href='https://www.fanfiction.net/alert/story.php' style='margin-left: 8px;'><img src='${chrome.runtime.getURL('icons/book.png')}' style='vertical-align: middle; cursor: default;' title='Followed Stories' width='20' height='20'></a>`
+                innerHTML: `<a href='https://www.fanfiction.net/favorites/story.php' style='margin-left: 10px;'><img src='${chrome.runtime.getURL('icons/favorites.svg')}' style='vertical-align: middle; cursor: default;' title='Favorite Stories' width='20' height='20'></a><a href='https://www.fanfiction.net/alert/story.php' style='margin-left: 8px;'><img src='${chrome.runtime.getURL('icons/follows.svg')}' style='vertical-align: middle; cursor: default;' title='Followed Stories' width='20' height='20'></a>`
             }));
         }
 
@@ -247,7 +247,7 @@ const main = async () => {
                 if (id && bookmarkDir[id]?.chapter) {
                     element.style.backgroundColor = '#e1edff';
                     element.querySelector('div').before(Object.assign(document.createElement('img'), {
-                        src: chrome.runtime.getURL('icons/bookmark1.png'),
+                        src: chrome.runtime.getURL('icons/bookmarked.svg'),
                         width: 14,
                         height: 14
                     }));
@@ -260,8 +260,8 @@ const main = async () => {
             const storyName = Array.from(document.querySelectorAll('b'))?.[5]?.innerText || '';
             const followButton = document.querySelector('.icon-heart');
             const chapter = chapSelects[0] ? Number(chapSelects[0].options[chapSelects[0].selectedIndex].innerText.split('.')[0]) : 1;
-            const iconUnmarked = `<img src="${chrome.runtime.getURL('icons/bookmark2.png')}" width="20" height="20">`;
-            const iconMarked = `<img src="${chrome.runtime.getURL('icons/bookmark1.png')}" width="20" height="20">`;
+            const iconUnmarked = `<img src="${chrome.runtime.getURL('icons/bookmark.svg')}" width="20" height="20">`;
+            const iconMarked = `<img src="${chrome.runtime.getURL('icons/bookmarked.svg')}" width="20" height="20">`;
             let lastChapterBookmark = 0;
             const preStoryLinks = document.querySelector('#pre_story_links')?.querySelectorAll('a');
             let fandom = preStoryLinks?.[1]?.innerText || preStoryLinks?.[0]?.innerText || '';
