@@ -14,6 +14,7 @@ const main = async () => {
         if (settings.allowCopy) {
             document.querySelectorAll('p').forEach((element) => {
                 element.style.userSelect = 'text';
+                element.style.webkitUserSelect = 'text'; // for Safari
             });
         }
 
