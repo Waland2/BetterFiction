@@ -18,11 +18,13 @@
 - Always use `.catch()` for error handling
 - Format Promise chains with proper indentation:
 ```javascript
-chrome.storage.sync.get('settings').then((result) => {
-    // handle result
-}).catch((error) => {
-    console.error('Error message:', error);
-});
+chrome.storage.sync.get('settings')
+    .then((result) => {
+        // handle result
+    })
+    .catch((error) => {
+        console.error('Error message:', error);
+    });
 ```
 
 ### 4. Error Handling
@@ -35,7 +37,7 @@ chrome.storage.sync.get('settings').then((result) => {
 - Use single quotes for strings consistently
 - Add semicolons at the end of statements
 - Use consistent spacing around operators and brackets
-- ~~Maximum line length: 100 characters~~ (broken for some html strings, but generally don't try to cram)
+- Maximum line length: 100 characters
 
 ### 6. Naming Conventions
 - Use camelCase for variables and functions
