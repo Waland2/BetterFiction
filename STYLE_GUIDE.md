@@ -9,10 +9,9 @@
 - Declare variables at the top of their minimum scope when possible
 
 ### 2. Function Declarations
-- Use `function` declarations for named functions
-- Use arrow functions for anonymous functions and callbacks
+- Use arrow functions for all functions and callbacks
 - Use `async/await` instead of Promise chains when possible
-- Keep functions focused and under 50 lines when possible (need to eventually modularize main)
+- Keep functions focused and under 50 lines when possible
 
 ### 3. Promise Handling
 - Always use `.catch()` for error handling
