@@ -181,8 +181,10 @@ const betterFiction = async () => {
                 Object.entries(METATYPES).forEach(([metaType, styleVal]) => {
                     let currentStyle = styleVal;
                     const className = '.' + metaType.toLowerCase() + 'metatype';
-                    const span = description.querySelector(className + '-val') || description.querySelector(className);
-                    if (span) {
+                    const metaSpan = description.querySelector(className + '-val') || description.querySelector(className);
+                    const spans = metaSpan ? [metaSpan].concat(Array.from(metaSpan.querySelectorAll('*'))) : [];
+                    spans.forEach((span) => {
+                        span.classList = metaSpan.classList;
                         if (!Array.isArray(currentStyle)) {
                             currentStyle = currentStyle[span.innerText] || currentStyle.default;
                         }
@@ -199,7 +201,7 @@ const betterFiction = async () => {
                                 span.style.color = color;
                             }
                         }
-                    }
+                    });
                 });
             };
 
@@ -212,29 +214,28 @@ const betterFiction = async () => {
     }
 
     const betterDescription = (element) => {
-        const description = storyContrast ? element.parentElement : element.querySelector('div')?.querySelector('div');
+        const description = element.querySelector('.xgray');
         if (!description) {
             return;
         }
 
         const placeholder = '{[@p]}';
-        const splitByRated = description.innerText.split(' - Rated: ');
+        const splitByRated = description.innerHTML.split(' - Rated: ');
 
         if (splitByRated.length > 1) {
             if (splitByRated[0].startsWith('Crossover - ')) {
                 splitByRated[0] = splitByRated[0].substring(11);
             }
             splitByRated[0] = 'Fandom: ' + splitByRated[0].replaceAll(' - ', placeholder);
-            description.innerText = splitByRated.join(' - Rated: ');
+            description.innerHTML = splitByRated.join(' - Rated: ');
         }
 
-        let endIndex = description.innerText.lastIndexOf(' - ') + 3;
-        let endItem = description.innerText.substring(endIndex);
-        if (endItem === 'Complete') {
-            description.innerText = description.innerText.substring(0, endIndex) + 'Status: ' + endItem;
+        let endIndex = description.innerHTML.lastIndexOf(' - ') + 3;
+        if (description.innerHTML.substring(endIndex) === 'Complete') {
+            description.innerHTML = description.innerHTML.substring(0, endIndex) + 'Status: Complete';
         }
 
-        description.innerHTML = (description.innerText).split(' - ').map((item) => `<span>${item}</span>`).join(' - ').replaceAll(placeholder, ' - ');
+        description.innerHTML = (description.innerHTML).split(' - ').map((item) => `<span>${item}</span>`).join(' - ').replaceAll(placeholder, ' - ');
 
         const metaSpans = description.querySelectorAll('span');
         if (!metaSpans.length) {
@@ -261,8 +262,8 @@ const betterFiction = async () => {
             const className = metaType.toLowerCase() + 'metatype';
             const span = description.querySelector('.' + className);
             const start = metaType + ': ';
-            if (span?.innerText.startsWith(start)) {
-                span.innerHTML = `${start}<span class='${className}-val'>${span.innerText.substring(start.length)}</span>`;
+            if (span?.innerHTML.startsWith(start)) {
+                span.innerHTML = `${start}<span class='${className}-val'>${span.innerHTML.substring(start.length)}</span>`;
             }
         });
 
@@ -498,7 +499,7 @@ const betterFiction = async () => {
 
         let imagesParent = document.querySelectorAll('.z-list');
         if (!imagesParent.length) {
-            imagesParent = document.querySelectorAll('[target="rating"]');
+            imagesParent = document.querySelectorAll('#profile_top');
         }
         imagesParent.forEach((element) => {
             separateFics(element);
