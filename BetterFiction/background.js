@@ -7,7 +7,7 @@ const primaryFunctions = [
     'autoSave',
     'markBookmarks',
     'colorBookmarks',
-    'ficList',
+    'organizer',
     'entireWork',
     'groupDescriptions',
     'styleDescriptions',
@@ -25,12 +25,33 @@ const secondaryFunctions = [
     'wordCounter',
     'profileSorts',
     'bigCovers',
-    'separateFics',
+    'separateFics'
 ];
 
-chrome.runtime.onInstalled.addListener(() => {
+// Default values for primary functions
+const primaryDefaults = {
+    markBookmarks: true,
+    colorBookmarks: true,
+    entireWork: true,
+    groupDescriptions: true,
+    styleDescriptions: true,
+    organizer: true,
+};
+
+const legacyMap = {
+    markFicWithBookmark: 'markBookmarks',
+    betterInfo: 'groupDescriptions',
+    betterInfoColor: 'styleDescriptions',
+    bookmarkButton: 'bookmarks',
+    chapterWordCounter: 'wordCounter',
+    moreOptionsInProfile: 'profileSorts',
+    allowCopy: 'copy',
+    allFicButton: 'entireWork',
+};
+
+chrome.runtime.onInstalled.addListener((details) => {
     const defaultSettings = {};
-    primaryFunctions.forEach(setting => defaultSettings[setting] = false);
+    primaryFunctions.forEach(setting => defaultSettings[setting] = primaryDefaults[setting] ?? false);
     secondaryFunctions.forEach(setting => defaultSettings[setting] = true);
 
     chrome.storage.sync.get('settings')
@@ -43,6 +64,15 @@ chrome.runtime.onInstalled.addListener(() => {
                     }
                 });
             }
+
+            // compatibility with old version settings
+            Object.keys(legacyMap).forEach(oldKey => {
+                if (settings && settings[oldKey] !== undefined) {
+                    const newKey = legacyMap[oldKey];
+                    defaultSettings[newKey] = settings[oldKey];
+                }
+            });
+
             return chrome.storage.sync.set({
                 settings: defaultSettings
             });
@@ -50,6 +80,12 @@ chrome.runtime.onInstalled.addListener(() => {
         .catch((error) => {
             console.error('Failed to initialize extension settings during installation:', error);
         });
+
+    if (details.reason === "install") {
+        chrome.tabs.create({
+            url: chrome.runtime.getURL("tabs/options/options.html")
+        });
+    }
 });
 
 /**
@@ -65,11 +101,12 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
                 author: action.author,
                 storyName: action.storyName,
                 addTime: new Date().toISOString(),
+                status: 'Reading'
             },
         })
-        .catch((error) => {
-            console.error(`Failed to save bookmark for story ${action.id}:`, error);
-        });
+            .catch((error) => {
+                console.error(`Failed to save bookmark for story ${action.id}:`, error);
+            });
     } else if (action.message === 'del-bookmark') {
         chrome.storage.local.remove(action.id)
             .catch((error) => {
@@ -95,5 +132,22 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
                 sendResponse({ result: {} });
             });
     }
+    else if (action.message === 'set-status') {
+        chrome.storage.local.get(action.id)
+            .then((data) => {
+                const existing = data[action.id] || { id: action.id };
+                existing.status = action.status;
+                if (!existing.addTime) existing.addTime = new Date().toISOString();
+                return chrome.storage.local.set({ [action.id]: existing });
+            })
+            .then(() => {
+                sendResponse({ result: { ok: true } });
+            })
+            .catch((error) => {
+                console.error(`Failed to set status for story ${action.id}:`, error);
+                sendResponse({ result: { ok: false } });
+            });
+    }
     return true;
 });
+

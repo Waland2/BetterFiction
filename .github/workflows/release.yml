@@ -1,0 +1,89 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'   
+
+jobs:
+  build:
+    name: Build zips (Chrome & Firefox)
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        target: [chrome, firefox]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      
+      - name: Extract version from tag
+        id: ver
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "version=${TAG#v}" >> $GITHUB_OUTPUT
+
+      - name: Patch manifests with version
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          jq ".version=\"${V}\"" BetterFiction/manifest.json > tmp.json && mv tmp.json BetterFiction/manifest.json
+          jq ".version=\"${V}\"" BetterFiction/firefox_manifest.json > tmp.json && mv tmp.json BetterFiction/firefox_manifest.json
+
+      - name: Prepare build dir
+        run: |
+          mkdir -p dist
+          rsync -av --exclude '.git' --exclude '.github' --exclude 'dist' ./BetterFiction/ ./work/
+          rm -rf ./work/node_modules || true
+
+      - name: Select manifest for matrix target
+        run: |
+          if [ "${{ matrix.target }}" = "chrome" ]; then
+            rm -f ./work/firefox_manifest.json
+          else
+            mv ./work/firefox_manifest.json ./work/manifest.json
+          fi
+
+      - name: Zip extension
+        run: |
+          V="${{ steps.ver.outputs.version }}"
+          OUT="BetterFiction-${V}-${{ matrix.target }}.zip"
+          (cd work && zip -r "../dist/${OUT}" .)
+          echo "out=${OUT}" >> $GITHUB_OUTPUT
+        id: zip
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.zip.outputs.out }}
+          path: dist/${{ steps.zip.outputs.out }}
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: build
+    permissions:           
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Chrome/Firefox ${{ github.ref_name }}"
+          tag_name: ${{ github.ref_name }}
+          generate_release_notes: false
+          files: |
+            dist/**/BetterFiction-*.zip

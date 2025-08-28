@@ -1,37 +1,50 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Bookmarks</title>
-        <link rel="stylesheet" type="text/css" href="bookmarks.css" />
-    </head>
-    <body>
-        <div class="controls">
-            <button id="export">Export bookmarks</button>
-            <button id="import">Import bookmarks</button>
-        </div>
 
-        <div class="container">
-            <h1>Bookmarks list</h1>
-        </div>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bookmarks</title>
+    <link rel="stylesheet" type="text/css" href="bookmarks.css" />
+</head>
 
-        <div class="container">
-            <table class="table table-hover table-responsive table-border">
-                <tbody>
-                    <tr>
-                        <th data-sort-type="id">ID</th>
-                        <th data-sort-type="storyName">Name</th>
-                        <th data-sort-type="chapter">Chapter</th>
-                        <th data-sort-type="fandom">Fandom</th>
-                        <th data-sort-type="author">Author</th>
-                        <th data-sort-type="addTime" class="active">Time</th>
-                        <th>Options</th>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+<body>
+    <div class="controls">
+        <button id="export">Export bookmarks</button>
+        <button id="import">Import bookmarks</button>
+    </div>
+    <div class="filters">
+        <button id="filter-all" class="filter-btn">All</button>
+        <button id="filter-reading" class="filter-btn">Reading</button>
+        <button id="filter-completed" class="filter-btn">Completed</button>
+        <button id="filter-planned" class="filter-btn">Planned</button>
+        <button id="filter-dropped" class="filter-btn">Dropped</button>
+    </div>
 
-        <script src="bookmarks.js"></script>
-    </body>
+
+
+    <div class="container">
+        <h1>Bookmarks list</h1>
+    </div>
+
+    <div class="container">
+        <table class="table table-hover table-responsive table-border">
+            <tbody>
+                <tr>
+                    <th data-sort-type="id">ID</th>
+                    <th data-sort-type="storyName">Name</th>
+                    <th data-sort-type="chapter">Chapter</th>
+                    <th data-sort-type="fandom">Fandom</th>
+                    <th data-sort-type="author">Author</th>
+                    <th data-sort-type="status">Status</th>
+                    <th data-sort-type="addTime" class="active">Time</th>
+                    <th>Options</th>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="bookmarks.js"></script>
+</body>
+
 </html>

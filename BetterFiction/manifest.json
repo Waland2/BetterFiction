@@ -5,9 +5,10 @@
     "description": "FanFiction.net improver",
     "author": "Waland2 & shahaadi",
     "icons": {
-        "16": "icons/ava.svg",
-        "32": "icons/ava.svg",
-        "128": "icons/ava.svg"
+        "16": "icons/ava.png",
+        "32": "icons/ava.png",
+        "48": "icons/ava.png",
+        "128": "icons/ava.png"
     },
     "permissions": ["storage", "unlimitedStorage"],
     "background": {

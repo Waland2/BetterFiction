@@ -51,16 +51,62 @@ function createBookmarkRow(bookmark) {
         <td>${bookmark.chapter}</td>
         <td>${bookmark.fandom}</td>
         <td>${bookmark.author}</td>
+        <td class="status-cell">${bookmark.status}</td>
         <td>${bookmark.displayDate}</td>
-        <td><a href="#">Delete</a></td>
+        <td class="options-cell">
+            <a href="#" class="change-link">Change status</a>
+            <span class="sep"> | </span>
+            <a href="#" class="delete-link">Delete</a>
+        </td>
     `;
-    tableRow.querySelectorAll('a')[1].addEventListener('click', (e) => {
+
+    const statusCell = tableRow.querySelector('.status-cell');
+    statusCell.innerHTML = `<span class="status-badge ${bookmark.status}">${bookmark.status}</span>`;
+
+    const optionsCell = tableRow.querySelector('.options-cell');
+    const deleteLink = optionsCell.querySelector('.delete-link');
+    const changeLink = optionsCell.querySelector('.change-link');
+    const sep = optionsCell.querySelector('.sep');
+
+    deleteLink.addEventListener('click', (e) => {
         e.preventDefault();
         chrome.storage.local.remove(bookmark.id).catch(err =>
             console.error(`Failed to delete bookmark for story ${bookmark.id}:`, err)
         );
         tableRow.remove();
     });
+
+    changeLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        changeLink.style.display = 'none';
+
+        const select = document.createElement('select');
+        select.className = 'status-select';
+        select.innerHTML = `
+            <option value="Planned">Planned</option>
+            <option value="Reading">Reading</option>
+            <option value="Completed">Completed</option>
+            <option value="Dropped">Dropped</option>
+        `;
+        select.value = bookmark.status;
+
+        optionsCell.insertBefore(select, sep);
+
+        select.addEventListener('change', () => {
+            bookmark.status = select.value;
+            statusCell.textContent = bookmark.status;
+            statusCell.innerHTML = `<span class="status-badge ${bookmark.status}">${bookmark.status}</span>`;
+
+
+            chrome.storage.local.set({ [bookmark.id]: bookmark }).catch(err =>
+                console.error(`Failed to update status for story ${bookmark.id}:`, err)
+            );
+
+            select.remove();
+            changeLink.style.display = '';
+        });
+    });
+
     tableRow.classList.toggle('table-row');
     return tableRow;
 }
@@ -88,6 +134,11 @@ chrome.storage.local.get().then((result) => {
         if (bookmark.addTime?.includes('/')) {
             const [day, month, year] = bookmark.addTime.split('/');
             bookmark.addTime = new Date(`${year}-${month}-${day}T00:00:00.000Z`).toISOString();
+            needToUpdate = true;
+        }
+
+        if (!('status' in bookmark)) {
+            bookmark.status = 'Reading';
             needToUpdate = true;
         }
 
@@ -178,3 +229,80 @@ document.querySelectorAll('th[data-sort-type]').forEach(header => {
         }
     });
 });
+
+function filterBookmarks(status) {
+    if (status === 'All') {
+        renderBookmarks(bookmarkLinks);
+    } else {
+        renderBookmarks(bookmarkLinks.filter(b => b.status === status));
+    }
+}
+
+
+const filterButtons = document.querySelectorAll('.filters .filter-btn');
+function setFilterActive(id) {
+    filterButtons.forEach(b => b.classList.toggle('filter-active', b.id === id));
+}
+
+document.querySelector('#filter-all').addEventListener('click', () => {
+    setFilterActive('filter-all');
+    filterBookmarks('All');
+});
+document.querySelector('#filter-planned').addEventListener('click', () => {
+    setFilterActive('filter-planned');
+    filterBookmarks('Planned');
+});
+document.querySelector('#filter-reading').addEventListener('click', () => {
+    setFilterActive('filter-reading');
+    filterBookmarks('Reading');
+});
+document.querySelector('#filter-completed').addEventListener('click', () => {
+    setFilterActive('filter-completed');
+    filterBookmarks('Completed');
+});
+document.querySelector('#filter-dropped').addEventListener('click', () => {
+    setFilterActive('filter-dropped');
+    filterBookmarks('Dropped');
+});
+
+setFilterActive('filter-all');
+
+
+const hideOrganizerUI = () => {
+    const filters = document.querySelector('.filters');
+    if (filters) filters.style.display = 'none';
+
+    const statusTh = document.querySelector('th[data-sort-type="status"]');
+    if (statusTh) statusTh.style.display = 'none';
+
+    document.querySelectorAll('.status-cell').forEach(td => {
+        td.style.display = 'none';
+    });
+
+    document.querySelectorAll('.options-cell .change-link, .options-cell .sep').forEach(el => {
+        el.style.display = 'none';
+    });
+};
+
+// Hide organizer ui if it off
+chrome.storage.sync.get('settings')
+    .then(({ settings = {} }) => {
+        if (settings.organizer) return; 
+
+        hideOrganizerUI();
+
+        const tbody = document.querySelector('table tbody');
+        if (tbody) {
+            const mo = new MutationObserver(() => {
+                requestAnimationFrame(hideOrganizerUI);
+            });
+            mo.observe(tbody, { childList: true, subtree: true });
+        }
+
+        document.querySelectorAll('th[data-sort-type]').forEach(th => {
+            th.addEventListener('click', () => {
+                setTimeout(hideOrganizerUI, 0);
+            });
+        });
+    })
+    .catch(err => console.error('Failed to apply organizer UI (status hiding):', err));
