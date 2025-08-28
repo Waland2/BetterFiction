@@ -93,3 +93,80 @@ th:hover {
     transition: 0.25s;
     background-color: #c4c4c4;
 }
+
+.status-select {
+    padding: 6px 10px;
+    border: 1px solid #cccccc;
+    border-radius: 4px;
+    font-size: 14px;
+    background-color: #ffffff;
+    color: #333333;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.status-select:focus {
+    outline: none;
+    border-color: #007bff;
+    box-shadow: 0 0 4px rgba(0, 123, 255, 0.4);
+}
+
+.status-badge {
+    padding: 6px 6px;
+    border-radius: 4px;
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.status-badge.Planned {
+    color: #d48806;
+    border: 1px solid #ffd666;
+    background-color: #fff7e6;
+}
+
+.status-badge.Reading {
+    color: #096dd9;
+    border: 1px solid #69c0ff;
+    background-color: #e6f7ff;
+}
+
+.status-badge.Completed {
+    color: #237804;
+    border: 1px solid #95de64;
+    background-color: #f6ffed;
+}
+
+.status-badge.Dropped {
+    color: #a8071a;
+    border: 1px solid #ffa39e;
+    background-color: #fff1f0;
+}
+
+.filters {
+    margin: 6px 0 20px;
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.filter-btn {
+    padding: 10px 20px;
+    background-color: transparent;
+    color: #333333;
+    border: 1px solid #cccccc;
+    border-radius: 15px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: 0.2s;
+}
+
+.filter-btn:hover {
+    border-color: #007bff;
+}
+
+.filter-btn.filter-active {
+    border-color: #007bff;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15) inset;
+}
