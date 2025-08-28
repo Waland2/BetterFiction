@@ -1,4 +1,4 @@
-const METATYPES = {
+const METATYPES = { // [sortOrder, fontWeight, color]
     Fandom: [0, '600', null],
     Rated: [1, null, 'rgb(8, 131, 131)'],
     Language: {
@@ -22,9 +22,9 @@ const METATYPES = {
     Since: [9, null, null],
     Founder: [10, null, null],
     Admin: [10, null, null],
-    Status: [11, '600', 'rgb(0, 99, 31)'],
+    Status: [13, '600', 'rgb(0, 99, 31)'],
     Characters: [12, null, null],
-    id: [13, null, null],
+    id: [14, null, null],
 };
 
 const sendMessage = (payload) => {
@@ -42,8 +42,6 @@ const adblock = (info) => {
 };
 
 const copy = (info) => {
-    console.log("copy: ")
-    console.log(info)
     if (info.copy) {
         document.querySelectorAll('p').forEach((element) => {
             element.style.userSelect = 'text';
@@ -63,20 +61,10 @@ const shortcuts = (info) => {
     if (info.bookmarks) {
         topMenu.appendChild(Object.assign(document.createElement('span'), {
             innerHTML:
-                `<a href='${chrome.runtime.getURL('tabs/bookmarks/bookmarks.html')}' style='margin-left: 10px;'>
+                `<a href='${chrome.runtime.getURL('tabs/bookmarks/bookmarks.html')}' target="_blank"  style='margin-left: 10px;'>
                     ${icon('Bookmarks')}
                 </a>`,
             id: 'openBookmarks'
-        }));
-    }
-
-    if (info.ficList) {
-        topMenu.appendChild(Object.assign(document.createElement('span'), {
-            innerHTML:
-                `<a href='${chrome.runtime.getURL('tabs/ficlist/ficlist.html')}' style='margin-left: 12px;'>
-                    ${icon('ficList')}
-                </a>`,
-            id: 'openFicList'
         }));
     }
 
@@ -147,12 +135,14 @@ const groupDescription = (info, description) => {
     if (info.groupDescriptions) {
         description.style.display = 'flow-root';
         description.style.paddingLeft = '0';
+
         description.innerHTML = description.innerHTML.split(' - ').sort((a, b) => {
             const findIndex = (item) => METATYPES[item.charAt(13).toUpperCase() + item.substring(14, item.indexOf('metatype'))]?.[0];
             return findIndex(a) - findIndex(b);
         }).join(' - ');
 
-        [['fandom'], ['genre', 'language'], ['words', 'posts', 'followers'], ['follows', 'favs', 'reviews'], ['status', 'published']].forEach((item) => {
+        // [['fandom'], ['genre', 'language'], ['words', 'posts', 'followers'], ['follows', 'favs', 'reviews'], ['status', 'published']].forEach((item) => {
+        [['fandom'], ['genre', 'language'], ['words', 'posts', 'followers'], ['follows', 'favs', 'reviews'], ['published', 'update',]].forEach((item) => {
             const getSpan = (metatype) => description.querySelector('.' + metatype + 'metatype');
             const metatype = item.find(getSpan);
             getSpan(metatype)?.after(document.createElement('br'));
@@ -168,6 +158,15 @@ const groupDescription = (info, description) => {
                 prevNode.textContent = prevNode.textContent.replace(/\s*-\s*$/, '');
             }
         }
+
+
+        const statusSpan = description.querySelector('.statusmetatype');
+        if (statusSpan) statusSpan.innerHTML = statusSpan.innerHTML.replace('Status: ', '');
+
+        const ratedSpan = description.querySelector('.ratedmetatype');
+        ratedSpan.innerHTML = ratedSpan.innerHTML.replace('Rated: ', '');
+        const ratedSpanValue = description.querySelector('.ratedmetatype-val');
+        ratedSpanValue.innerHTML = 'Rated: ' + ratedSpanValue.innerHTML.replace('Fiction ', '');
     }
 }
 
@@ -219,17 +218,12 @@ const betterDescription = (info, element) => {
     const placeholder = '{[@p]}';
     const splitByRated = description.innerHTML.split(' - Rated: ');
 
-    if (splitByRated.length > 1) {
+    if (splitByRated.length > 1) { // TBU
         if (splitByRated[0].startsWith('Crossover - ')) {
             splitByRated[0] = splitByRated[0].substring(11);
         }
         splitByRated[0] = 'Fandom: ' + splitByRated[0].replaceAll(' - ', placeholder);
         description.innerHTML = splitByRated.join(' - Rated: ');
-    }
-
-    let endIndex = description.innerHTML.lastIndexOf(' - ') + 3;
-    if (description.innerHTML.substring(endIndex) === 'Complete') {
-        description.innerHTML = description.innerHTML.substring(0, endIndex) + 'Status: Complete';
     }
 
     description.innerHTML = (description.innerHTML).split(' - ').map((item) => `<span>${item}</span>`).join(' - ').replaceAll(placeholder, ' - ');
@@ -240,7 +234,10 @@ const betterDescription = (info, element) => {
     }
 
     metaSpans.forEach((span) => {
-        const metatype = Object.keys(METATYPES).find((metatype) => span.innerText.startsWith(metatype + ': '));
+        const metatype = Object.keys(METATYPES).find((metatype) => {
+            if (span.innerText === 'Complete' && metatype === 'Status') return true;
+            return span.innerText.startsWith(metatype + ': ')
+        })
         if (metatype) {
             span.classList.add(metatype.toLowerCase() + 'metatype');
         }
@@ -257,7 +254,7 @@ const betterDescription = (info, element) => {
 
     Object.keys(METATYPES).forEach((metaType) => {
         const className = metaType.toLowerCase() + 'metatype';
-        const span = description.querySelector('.' + className);
+        const span = description.querySelector(`.${className}`);
         const start = metaType + ': ';
         if (span?.innerHTML.startsWith(start)) {
             span.innerHTML = `${start}<span class='${className}-val'>${span.innerHTML.substring(start.length)}</span>`;
@@ -365,6 +362,8 @@ const bookmarks = (info, dir, id, chapters, chapter, follow) => {
         if (dir[id]?.chapter === chapter) {
             button.innerHTML = iconUnmarked;
             go.style.display = 'none';
+            document.querySelector('#organizer-status-selecter').style.display = 'none';
+
             delete dir[id];
             sendMessage({
                 message: 'del-bookmark',
@@ -377,6 +376,7 @@ const bookmarks = (info, dir, id, chapters, chapter, follow) => {
             }
             button.innerHTML = iconMarked;
             go.style.display = '';
+            document.querySelector('#organizer-status-selecter').style.display = '';
             const bookmarkInfo = {
                 chapter,
                 id,
@@ -392,7 +392,41 @@ const bookmarks = (info, dir, id, chapters, chapter, follow) => {
     return button;
 };
 
-const story = (info, dir, id, chapters, chapSelects, storyTexts, follow) => {
+const organizer = (dir, id) => {
+    if (!id) return '';
+    if (!dir[id]) dir[id] = { id };
+    const STATUSES = ['Planned', 'Reading', 'Completed', 'Dropped'];
+    const current = STATUSES.includes(dir[id].status) ? dir[id].status : 'Reading';
+
+    const wrap = document.createElement('span');
+    wrap.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-inline:8px;';
+    if (!dir[id]?.status) wrap.style.display = 'none';
+    wrap.id = 'organizer-status-selecter';
+    wrap.classList = 'pull-right';
+
+    wrap.innerHTML = `
+        <span style="font-size:12px;color:#4b5563;">Status:</span>
+        <select aria-label="Change reading status"
+            style="height:30px;padding:2px 6px;font-size:12px;line-height:20px;
+                   border:1px solid #d1d5db;border-radius:6px;background:#fff;">
+            ${STATUSES.map(
+        (s) => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`
+    ).join('')}
+        </select>
+    `;
+
+    const select = wrap.querySelector('select');
+    select.addEventListener('change', () => {
+        const next = select.value;
+        dir[id].status = next;
+        sendMessage({ message: 'set-status', id, status: next });
+    });
+
+    return wrap;
+};
+
+
+const story = (info, dir, id, chapters, chapSelects, storyTexts, follow, isEntireWork = false) => {
     if (!id) {
         return;
     }
@@ -402,15 +436,18 @@ const story = (info, dir, id, chapters, chapSelects, storyTexts, follow) => {
 
     const separatorId = (chapter) => `separator${chapter}`;
     const separator = (chapter) => {
-        console.log(chapSelects[0].options[chapter - 1]?.innerText)
+        const chapterTitle = chapSelects[0].options[chapter - 1]?.innerText || '';
         const span = Object.assign(document.createElement('span'), {
             className: storyTexts[storyTexts.length - 1].className,
             id: separatorId(chapter),
-            innerHTML: '<br>' + `<h4 style='user-select: text'>${chapSelects[0].options[chapter - 1]?.innerText.split('. ')[1] || ''}</h4>` + '<hr size="1" noshade style="background: #e2e2e2; height: 1px;">'
-            // innerHTML: '<br>' + '<hr size="1" noshade style="background: #e2e2e2; height: 1px;">'
+            innerHTML: (isEntireWork ? '<br>' + `<h4 style='user-select: text'>${chapterTitle}</h4>` + '<hr size="1" noshade style="background: #e2e2e2; height: 1px;">' : '<br>' + `<h4 style='user-select: text; height: 15px'> </h4>` + '<hr size="1" noshade style="background: #e2e2e2; height: 1px;">')
         });
 
         span.querySelector('h4').after(bookmarks(info, dir, id, chapters, chapter, follow));
+
+        if (info.organizer) {
+            if (!document.querySelector("#organizer-status-selecter")) follow.after(organizer(dir, id));
+        }
         return span;
     };
 
@@ -426,7 +463,7 @@ const story = (info, dir, id, chapters, chapSelects, storyTexts, follow) => {
     });
 };
 
-const entireWork = (info, id, chapters, chapSelects, storyTexts, follow) => {
+const entireWork = (info, dir, id, chapters, chapSelects, storyTexts, follow) => {
     if (info.entireWork && chapSelects[0]) {
         const button = Object.assign(document.createElement('button'), {
             type: 'button',
@@ -478,7 +515,7 @@ const entireWork = (info, id, chapters, chapSelects, storyTexts, follow) => {
                     }
                     storyContrast.click();
                     storyContrast.click();
-                    story(info, dir, id, chapters, chapSelects, storyTexts, follow);
+                    story(info, dir, id, chapters, chapSelects, storyTexts, follow, true);
                 }
             };
 
@@ -500,31 +537,20 @@ const main = async () => {
 
     try {
         adblock(info);
-
         shortcuts(info);
-
         profileSorts(info);
 
         let imagesParent = document.querySelectorAll('.z-list');
-        if (!imagesParent.length) {
-            imagesParent = document.querySelectorAll('#profile_top');
-        }
+        if (!imagesParent.length) imagesParent = document.querySelectorAll('#profile_top');
         imagesParent.forEach((element) => {
-
-            if (!isStoryPage()) {
-                separateFics(info, element);
-            }
-
+            if (!isStoryPage()) separateFics(info, element);
             bigCover(info, element);
-
             betterDescription(info, element);
-
             const chapters = Number(element.querySelector('.chaptersmetatype-val')?.innerText || 1);
             markBookmark(info, element, dir, chapters);
         });
 
         const id = document.querySelector('.idmetatype-val')?.innerText.trim() || '';
-        console.log(id)
         if (id) {
             const chapters = Number(document.querySelector('.chaptersmetatype-val')?.innerText || 1);
             const chapSelects = document.querySelectorAll('#chap_select');
@@ -539,7 +565,7 @@ const main = async () => {
             const follow = document.querySelector('.icon-heart');
 
             story(info, dir, id, chapters, chapSelects, storyTexts, follow);
-            entireWork(info, id, chapters, chapSelects, storyTexts, follow);
+            entireWork(info, dir, id, chapters, chapSelects, storyTexts, follow);
 
             if (info.bookmarks && info.autoSave && (dir[id]?.chapter || 0) < chapter) {
                 document.querySelector(`#bookmark${chapter}`).click();
