@@ -1,11 +1,11 @@
 const METATYPES = { // [sortOrder, fontWeight, color]
     fandom: [0, '600', null],
     rated: [1, null, 'rgb(8, 131, 131)'],
-    language: {
-        English: [2, null, 'rgb(151, 0, 0)'],
-        Spanish: [2, null, 'rgb(171, 143, 0)'],
-        default: [2, null, 'rgb(0, 0, 255)']
-    },
+    language: [2, null, {
+        English: 'rgb(151, 0, 0)',
+        Spanish: 'rgb(171, 143, 0)',
+        default: 'rgb(0, 0, 255)'
+    }],
     genre: [3, null, 'rgb(144, 48, 0)'],
     chapters: [4, null, 'rgb(0, 0, 0)'],
     words: [5, null, 'rgb(0, 0, 0)'],
@@ -161,32 +161,22 @@ const groupDescription = (info, description) => {
 const storyContrast = document.querySelector('[title=\'Story Contrast\']');
 const styleDescription = (info, description) => {
     if (info.styleDescriptions) {
-        const colorDescription = () => {
-            Object.entries(METATYPES).forEach(([meta, styleVal]) => {
-                let currentStyle = styleVal;
-                const metaSpan = description.querySelector(`.${meta}value`) || description.querySelector(`.${meta}meta`);
-                const spans = metaSpan ? [metaSpan].concat(Array.from(metaSpan.querySelectorAll('*'))) : [];
-                spans.forEach((span) => {
-                    span.classList = metaSpan.classList;
-                    if (!Array.isArray(currentStyle)) {
-                        currentStyle = currentStyle[span.innerText] || currentStyle.default;
+        const colorDescription = () => Object.entries(METATYPES).forEach(([meta, [sortOrder, fontWeight, color]]) => {
+            const metaSpan = description.querySelector(`.${meta}meta`);
+            const valueSpan = metaSpan?.querySelector(`.${meta}value`) || metaSpan;
+            const spans = valueSpan ? [valueSpan].concat(Array.from(valueSpan.querySelectorAll('*'))) : [];
+            spans.forEach((span) => {
+                if (fontWeight) span.style.fontWeight = fontWeight;
+                let trueColor = color?.[span.innerText] || color;
+                if (trueColor) {
+                    if (storyContrast?.parentElement?.style.backgroundColor === 'rgb(51, 51, 51)') {
+                        const [r, g, b] = trueColor.match(/\d+/g).map(Number);
+                        trueColor = `rgb(${255 - r}, ${255 - g}, ${255 - b})`;
                     }
-                    if (Array.isArray(currentStyle)) {
-                        let [order, fw, color] = currentStyle;
-                        if (fw) {
-                            span.style.fontWeight = fw;
-                        }
-                        if (color) {
-                            if (storyContrast?.parentElement?.style.backgroundColor === 'rgb(51, 51, 51)') {
-                                const [r, g, b] = color.match(/\d+/g).map(Number);
-                                color = `rgb(${255 - r}, ${255 - g}, ${255 - b})`;
-                            }
-                            span.style.color = color;
-                        }
-                    }
-                });
+                    span.style.color = trueColor;
+                }
             });
-        };
+        });
 
         colorDescription();
 
