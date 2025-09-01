@@ -152,9 +152,11 @@ const groupDescription = (info, description) => {
         if (statusSpan) statusSpan.innerHTML = statusSpan.innerHTML.replace('Status: ', '');
 
         const ratedSpan = description.querySelector('.ratedmeta');
-        ratedSpan.innerHTML = ratedSpan.innerHTML.replace('Rated: ', '');
-        const ratedSpanValue = description.querySelector('.ratedvalue');
-        ratedSpanValue.innerHTML = 'Rated: ' + ratedSpanValue.innerHTML.replace('Fiction ', '');
+        if (ratedSpan) {
+            ratedSpan.innerHTML = ratedSpan.innerHTML.replace('Rated: ', '');
+            const ratedSpanValue = description.querySelector('.ratedvalue');
+            ratedSpanValue.innerHTML = 'Rated: ' + ratedSpanValue.innerHTML.replace('Fiction ', '');
+        }
     }
 }
 
@@ -170,8 +172,11 @@ const styleDescription = (info, description) => {
                 let trueColor = color?.[span.innerText] || color;
                 if (trueColor) {
                     if (storyContrast?.parentElement?.style.backgroundColor === 'rgb(51, 51, 51)') {
-                        const [r, g, b] = trueColor.match(/\d+/g).map(Number);
-                        trueColor = `rgb(${255 - r}, ${255 - g}, ${255 - b})`;
+                        const rgb = trueColor.match(/\d+/g);
+                        if (rgb) {
+                            const [r, g, b] = trueColor.match(/\d+/g).map(Number);
+                            trueColor = `rgb(${255 - r}, ${255 - g}, ${255 - b})`;
+                        }
                     }
                     span.style.color = trueColor;
                 }
@@ -267,7 +272,7 @@ const wordCounter = (info, chapSelects, storyTexts) => {
     if (info.wordCounter) {
         storyTexts.forEach((element) => {
             const chapter = Number(element.id.replace('storytext', ''));
-            if (/ - Words: \d+$/.test(chapSelects[0].options[chapter - 1].textContent)) {
+            if (/ - Words: \d+$/.test(chapSelects[0]?.options[chapter - 1].textContent)) {
                 return;
             }
             let wordCounter = 0;
@@ -370,7 +375,7 @@ const organizer = (dir, id) => {
     wrap.classList = 'pull-right';
 
     wrap.innerHTML = `
-        <span style="font-size:12px;color:#4b5563;">Status:</span>
+        <span class="xcontrast_txt" style="font-size:12px;color:#4b5563;">Status:</span>
         <select aria-label="Change reading status"
             style="height:30px;padding:2px 6px;font-size:12px;line-height:20px;
                    border:1px solid #d1d5db;border-radius:6px;background:#fff;">
@@ -401,7 +406,7 @@ const story = (info, dir, id, chapters, chapSelects, storyTexts, follow, isEntir
 
     const separatorId = (chapter) => `separator${chapter}`;
     const separator = (chapter) => {
-        const chapterTitle = chapSelects[0].options[chapter - 1]?.innerText || '';
+        const chapterTitle = chapSelects[0]?.options[chapter - 1]?.innerText || '';
         const span = Object.assign(document.createElement('span'), {
             className: storyTexts[storyTexts.length - 1].className,
             id: separatorId(chapter),
@@ -420,6 +425,7 @@ const story = (info, dir, id, chapters, chapSelects, storyTexts, follow, isEntir
         const finalSeparator = separator(chapters + 1);
         storyTexts[storyTexts.length - 1].after(finalSeparator);
     }
+
     storyTexts.forEach((element) => {
         const chapter = Number(element?.id?.replace('storytext', '') || 0);
         if (chapter && !document.querySelector(`#${separatorId(chapter)}`)) {
@@ -478,8 +484,6 @@ const entireWork = (info, dir, id, chapters, chapSelects, storyTexts, follow) =>
                         loadMore.style.display = '';
                         break;
                     }
-                    storyContrast.click();
-                    storyContrast.click();
                     story(info, dir, id, chapters, chapSelects, storyTexts, follow, true);
                 }
             };
@@ -487,7 +491,10 @@ const entireWork = (info, dir, id, chapters, chapSelects, storyTexts, follow) =>
             finalSeparator.querySelector('hr').after(loadMore);
             loadMore.click();
         };
+        storyContrast.click();
+        storyContrast.click();
         follow.after(button);
+
     }
 }
 
