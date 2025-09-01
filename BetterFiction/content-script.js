@@ -1,29 +1,29 @@
 const METATYPES = { // [sortOrder, fontWeight, color]
-    Fandom: [0, '600', null],
-    Rated: [1, null, 'rgb(8, 131, 131)'],
-    Language: {
+    fandom: [0, '600', null],
+    rated: [1, null, 'rgb(8, 131, 131)'],
+    language: {
         English: [2, null, 'rgb(151, 0, 0)'],
         Spanish: [2, null, 'rgb(171, 143, 0)'],
         default: [2, null, 'rgb(0, 0, 255)']
     },
-    Genre: [3, null, 'rgb(144, 48, 0)'],
-    Chapters: [4, null, 'rgb(0, 0, 0)'],
-    Words: [5, null, 'rgb(0, 0, 0)'],
-    Staff: [3, null, 'rgb(0, 0, 0)'],
-    Archive: [4, null, 'rgb(0, 0, 0)'],
-    Followers: [5, null, 'rgb(0, 0, 0)'],
-    Topics: [4, null, 'rgb(0, 0, 0)'],
-    Posts: [5, null, 'rgb(0, 0, 0)'],
-    Reviews: [6, null, 'rgb(0, 0, 0)'],
-    Favs: [7, null, 'rgb(0, 0, 0)'],
-    Follows: [8, null, 'rgb(0, 0, 0)'],
-    Updated: [9, null, null],
-    Published: [10, null, null],
-    Since: [9, null, null],
-    Founder: [10, null, null],
-    Admin: [10, null, null],
-    Status: [13, '600', 'rgb(0, 99, 31)'],
-    Characters: [12, null, null],
+    genre: [3, null, 'rgb(144, 48, 0)'],
+    chapters: [4, null, 'rgb(0, 0, 0)'],
+    words: [5, null, 'rgb(0, 0, 0)'],
+    staff: [3, null, 'rgb(0, 0, 0)'],
+    archive: [4, null, 'rgb(0, 0, 0)'],
+    followers: [5, null, 'rgb(0, 0, 0)'],
+    topics: [4, null, 'rgb(0, 0, 0)'],
+    posts: [5, null, 'rgb(0, 0, 0)'],
+    reviews: [6, null, 'rgb(0, 0, 0)'],
+    favs: [7, null, 'rgb(0, 0, 0)'],
+    follows: [8, null, 'rgb(0, 0, 0)'],
+    updated: [9, null, null],
+    published: [10, null, null],
+    since: [9, null, null],
+    founder: [10, null, null],
+    admin: [10, null, null],
+    characters: [12, null, null],
+    status: [13, '600', 'rgb(0, 99, 31)'],
     id: [14, null, null],
 };
 
@@ -109,13 +109,13 @@ const profileSorts = (info) => {
                 return;
             }
             const storyContainer = document.querySelector(`#${place}_inside`);
-            ['Follows', 'Favs'].forEach((metatype) => {
+            ['Follows', 'Favs'].forEach((meta) => {
                 sort.before(Object.assign(document.createElement('span'), {
-                    innerHTML: metatype,
+                    innerHTML: meta,
                     className: 'gray',
                     onclick: () => {
                         const sorted = Array.from(placeElem.querySelectorAll(`.${storyType}`)).sort((a, b) => {
-                            const get = (s) => Number(s.querySelector(`.${metatype.toLowerCase()}metatype-val`)?.innerText.replaceAll(',', '')) || 0;
+                            const get = (s) => Number(s.querySelector(`.${meta}value`)?.innerText.replaceAll(',', '')) || 0;
                             return get(b) - get(a);
                         });
                         placeElem.querySelectorAll(`.${storyType}`).forEach((element) => element.remove());
@@ -132,36 +132,28 @@ const groupDescription = (info, description) => {
         description.style.display = 'flow-root';
         description.style.paddingLeft = '0';
 
-        description.innerHTML = description.innerHTML.split(' - ').sort((a, b) => {
-            const findIndex = (item) => METATYPES[item.charAt(13).toUpperCase() + item.substring(14, item.indexOf('metatype'))]?.[0];
-            return findIndex(a) - findIndex(b);
-        }).join(' - ');
+        description.innerHTML = Array.from(description.children).sort((a, b) => {
+            const getIndex = (span) => METATYPES[span.className.substring(0, span.className.indexOf('meta'))]?.[0];
+            return getIndex(a) - getIndex(b);
+        }).map((span) => span.outerHTML).join(" - ");
 
-        // [['fandom'], ['genre', 'language'], ['words', 'posts', 'followers'], ['follows', 'favs', 'reviews'], ['status', 'published']].forEach((item) => {
-        [['fandom'], ['genre', 'language'], ['words', 'posts', 'followers'], ['follows', 'favs', 'reviews'], ['published', 'update',]].forEach((item) => {
-            const getSpan = (metatype) => description.querySelector('.' + metatype + 'metatype');
-            const metatype = item.find(getSpan);
-            getSpan(metatype)?.after(document.createElement('br'));
+        [['fandom'], ['genre', 'language'], ['words', 'posts', 'followers'], ['follows', 'favs', 'reviews'], ['published'], ['status', 'characters']].forEach((item) => {
+            const getSpan = (meta) => description.querySelector(`:scope > .${meta}meta`);
+            const meta = item.find(getSpan);
+            getSpan(meta)?.after(document.createElement('br'));
         });
 
-        description.innerHTML = description.innerHTML.replace(/<br>.{2}/g, '<br>');
+        description.innerHTML = description.innerHTML.replace(/<br> - /g, '<br>');
 
-        const idSpan = description.querySelector('.idmetatype');
-        if (idSpan) {
-            idSpan.style.display = 'none';
-            const prevNode = idSpan.previousSibling;
-            if (prevNode && prevNode.nodeType === Node.TEXT_NODE) {
-                prevNode.textContent = prevNode.textContent.replace(/\s*-\s*$/, '');
-            }
-        }
+        const idSpan = description.querySelector('.idmeta');
+        if (idSpan) idSpan.style.display = 'none';
 
-
-        const statusSpan = description.querySelector('.statusmetatype');
+        const statusSpan = description.querySelector('.statusmeta');
         if (statusSpan) statusSpan.innerHTML = statusSpan.innerHTML.replace('Status: ', '');
 
-        const ratedSpan = description.querySelector('.ratedmetatype');
+        const ratedSpan = description.querySelector('.ratedmeta');
         ratedSpan.innerHTML = ratedSpan.innerHTML.replace('Rated: ', '');
-        const ratedSpanValue = description.querySelector('.ratedmetatype-val');
+        const ratedSpanValue = description.querySelector('.ratedvalue');
         ratedSpanValue.innerHTML = 'Rated: ' + ratedSpanValue.innerHTML.replace('Fiction ', '');
     }
 }
@@ -170,10 +162,9 @@ const storyContrast = document.querySelector('[title=\'Story Contrast\']');
 const styleDescription = (info, description) => {
     if (info.styleDescriptions) {
         const colorDescription = () => {
-            Object.entries(METATYPES).forEach(([metaType, styleVal]) => {
+            Object.entries(METATYPES).forEach(([meta, styleVal]) => {
                 let currentStyle = styleVal;
-                const className = '.' + metaType.toLowerCase() + 'metatype';
-                const metaSpan = description.querySelector(className + '-val') || description.querySelector(className);
+                const metaSpan = description.querySelector(`.${meta}value`) || description.querySelector(`.${meta}meta`);
                 const spans = metaSpan ? [metaSpan].concat(Array.from(metaSpan.querySelectorAll('*'))) : [];
                 spans.forEach((span) => {
                     span.classList = metaSpan.classList;
@@ -225,35 +216,23 @@ const betterDescription = (info, element) => {
     description.innerHTML = (description.innerHTML).split(' - ').map((item) => `<span>${item}</span>`).join(' - ').replaceAll(placeholder, ' - ');
 
     const metaSpans = description.querySelectorAll('span');
-    if (!metaSpans.length) {
-        return;
-    }
-
     metaSpans.forEach((span) => {
-        const metatype = Object.keys(METATYPES).find((metatype) => {
-            if (span.innerText === 'Complete' && metatype === 'Status') return true;
-            return span.innerText.startsWith(metatype + ': ')
-        })
-        if (metatype) {
-            span.classList.add(metatype.toLowerCase() + 'metatype');
-        }
+        const meta = Object.keys(METATYPES).find((meta) => (span.innerText === 'Complete' && meta === 'status') || span.innerText.toLowerCase().startsWith(meta + ': '));
+        if (meta) span.classList.add(meta + 'meta');
     });
 
     let notDone = ['language', 'genre', 'characters'];
     const allGenres = 'AdventureAngstCrimeDramaFamilyFantasyFriendshipGeneralHorrorHumorHurt/ComfortMysteryParodyPoetryRomanceSci-FiSpiritualSupernaturalSuspenseTragedyWestern';
     description.querySelectorAll(':not([class])').forEach((span) => {
-        if (notDone[0] === 'genre' && !span.innerText.split('/').every((genre) => allGenres.includes(genre))) {
-            notDone.shift();
-        }
-        span.className = (notDone.shift() || 'characters') + 'metatype';
+        if (notDone[0] === 'genre' && !span.innerText.split('/').every((genre) => allGenres.includes(genre))) notDone.shift();
+        span.className = (notDone.shift() || 'characters') + 'meta';
     });
 
-    Object.keys(METATYPES).forEach((metaType) => {
-        const className = metaType.toLowerCase() + 'metatype';
-        const span = description.querySelector(`.${className}`);
-        const start = metaType + ': ';
-        if (span?.innerHTML.startsWith(start)) {
-            span.innerHTML = `${start}<span class='${className}-val'>${span.innerHTML.substring(start.length)}</span>`;
+    Object.keys(METATYPES).forEach((meta) => {
+        const span = description.querySelector(`.${meta}meta`);
+        const start = meta + ': ';
+        if (span?.innerHTML.toLowerCase().startsWith(start)) {
+            span.innerHTML = `${span.innerHTML.substring(0, start.length)}<span class='${meta}value'>${span.innerHTML.substring(start.length)}</span>`;
         }
     });
 
@@ -542,14 +521,14 @@ const main = async () => {
         imagesParent.forEach((element) => {
             bigCover(info, element);
             betterDescription(info, element);
-            id = document.querySelector('.idmetatype-val')?.innerText.trim() || '';
+            id = document.querySelector('.idvalue')?.innerText.trim() || '';
             if (!id) separateFics(info, element);
-            const chapters = Number(element.querySelector('.chaptersmetatype-val')?.innerText || 1);
+            const chapters = Number(element.querySelector('.chaptersvalue')?.innerText || 1);
             markBookmark(info, element, dir, chapters);
         });
 
         if (id) {
-            const chapters = Number(document.querySelector('.chaptersmetatype-val')?.innerText || 1);
+            const chapters = Number(document.querySelector('.chaptersvalue')?.innerText || 1);
             const chapSelects = document.querySelectorAll('#chap_select');
             let chapter = 1;
             if (chapSelects[0]) {
