@@ -1,144 +1,147 @@
 <!doctype html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Options</title>
-        <link rel="stylesheet" href="options.css" />
-    </head>
 
-    <body>
-        <main>
-            <header>
-                <span>BetterFiction Extension</span>
-            </header>
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Options</title>
+    <link rel="stylesheet" href="options.css" />
+</head>
 
-            <div class="features">
-                <p class="header">Major features</p>
+<body>
+    <main>
+        <header>
+            <span>BetterFiction Extension</span>
+        </header>
 
-                <div class="checkbox-label">
-                    <input type="checkbox" id="autoSave" />
-                    <label for="autoSave" title="Automatically leave a bookmark at the last read chapter">
-                        Automatically leave a bookmark
-                    </label>
-                </div>
+        <div class="features">
+            <p class="header">Major features</p>
 
-                <div class="checkbox-label">
-                    <input type="checkbox" id="markBookmarks" />
-                    <label for="markBookmarks" title="Mark the fanfiction on which the bookmark was left">
-                        Mark fanfiction with bookmarks
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="colorBookmarks" />
-                    <label for="colorBookmarks" title="Color the bookmarks based on read status (planned, ongoing, completed)">
-                        Color bookmarks by read status
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="organizer" />
-                    <label for="organizer" title="Fanfiction List">
-                        Fanfiction Organizer
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="entireWork" />
-                    <label for="entireWork" title="Button to show the entire work">
-                        Entire work button
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="groupDescriptions" />
-                    <label for="groupDescriptions" title="Group the description of the fanfic">
-                        Grouping fics descriptions
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="styleDescriptions" />
-                    <label for="styleDescriptions" title="To highlight information in the fanfic description with different colors">
-                        Highlight fics descriptions with colors
-                    </label>
-                </div>
+            <div class="checkbox-label">
+                <input type="checkbox" id="autoSave" />
+                <label for="autoSave" title="Automatically leave a bookmark at the last read chapter">
+                    Automatically leave a bookmark
+                </label>
             </div>
 
-            <div class="features">
-                <p class="header">Minor features</p>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="adblock" />
-                    <label for="adblock" title="Block ads on website">
-                        Block ads
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="copy" />
-                    <label for="copy" title="Removing the restriction on copying text from fanfiction">
-                        Allow copying text from fics
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="shortcuts" />
-                    <label for="shortcuts" title="Icons for quick access to the list of favorite and followed stories">
-                        Icons for quick navigation
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="bookmarks" />
-                    <label for="bookmarks" title="The ability to leave bookmarks">
-                        Bookmarks
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="wordCounter" />
-                    <label for="wordCounter" title="Display the word count in the chapter">
-                        Display the word count in a chapter
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="profileSorts" />
-                    <label for="profileSorts"
-                        title="Additional buttons in profiles for sorting by favorites and follows">
-                        Additional sort buttons in profiles
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="bigCovers" />
-                    <label for="bigCovers" title="Enlarge fanfic covers">
-                        Large covers for fics
-                    </label>
-                </div>
-
-                <div class="checkbox-label">
-                    <input type="checkbox" id="separateFics" />
-                    <label for="separateFics" title="Split fanfics into separate blocks">
-                        Separate fics
-                    </label>
-                </div>
+            <div class="checkbox-label">
+                <input type="checkbox" id="markBookmarks" />
+                <label for="markBookmarks" title="Mark the fanfiction on which the bookmark was left">
+                    Mark fanfiction with bookmarks
+                </label>
             </div>
 
-            <span class="note">
-                This extension is open-source - 
-                <a href="https://github.com/Waland2/BetterFiction" target="_blank">GitHub</a>.
-                <br /><br />
-                <div class="authors">
+            <div class="checkbox-label">
+                <input type="checkbox" id="colorBookmarks" />
+                <label for="colorBookmarks"
+                    title="Color the bookmarks based on read status (planned, ongoing, completed)">
+                    Color bookmarks by read status
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="organizer" />
+                <label for="organizer" title="Allows you to set the statuses Reading/Completed/Dropped/Planned for bookmarks">
+                    Fanfiction Organizer (Bookmark statuses)
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="entireWork" />
+                <label for="entireWork" title="Button to show the entire work">
+                    Entire work button
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="groupDescriptions" />
+                <label for="groupDescriptions" title="Group the description of the fanfic">
+                    Grouping fics descriptions
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="styleDescriptions" />
+                <label for="styleDescriptions"
+                    title="To highlight information in the fanfic description with different colors">
+                    Highlight fics descriptions with colors
+                </label>
+            </div>
+        </div>
+
+        <div class="features">
+            <p class="header">Minor features</p>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="adblock" />
+                <label for="adblock" title="Block ads on website">
+                    Block ads
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="copy" />
+                <label for="copy" title="Removing the restriction on copying text from fanfiction">
+                    Allow copying text from fics
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="shortcuts" />
+                <label for="shortcuts" title="Icons for quick access to the list of favorite and followed stories">
+                    Icons for quick navigation
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="bookmarks" />
+                <label for="bookmarks" title="The ability to leave bookmarks">
+                    Bookmarks
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="wordCounter" />
+                <label for="wordCounter" title="Display the word count in the chapter">
+                    Display the word count in a chapter
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="profileSorts" />
+                <label for="profileSorts" title="Additional buttons in profiles for sorting by favorites and follows">
+                    Additional sort buttons in profiles
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="bigCovers" />
+                <label for="bigCovers" title="Enlarge fanfic covers">
+                    Large covers for fics
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="separateFics" />
+                <label for="separateFics" title="Split fanfics into separate blocks">
+                    Separate fics
+                </label>
+            </div>
+        </div>
+
+        <span class="note">
+            This extension is open-source -
+            <a href="https://github.com/Waland2/BetterFiction" target="_blank">GitHub</a>.
+            <br /><br />
+            <div class="authors">
                 Developed by Waland2 & shahaadi
-                </div>
-            </span>
+            </div>
+        </span>
 
-        </main>
+    </main>
 
-        <script src="../../utils/checkbox-handler.js"></script>
-        <script src="options.js"></script>
-    </body>
+    <script src="../../utils/checkbox-handler.js"></script>
+    <script src="options.js"></script>
+</body>
+
 </html>
