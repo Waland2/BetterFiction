@@ -17,7 +17,7 @@ A browser extension that improves your FanFiction.net experience with bookmarks,
 * Makes story description easier to read by highlighting and grouping details.
 * Adds sorting options (favs & follows) on author profiles and quick links to favorites/follows.
 * Allow copying text from fics.
-* Chpater words counter. 
+* Chapter words counter. 
 * Adblock.
 
 ## Screenshots
