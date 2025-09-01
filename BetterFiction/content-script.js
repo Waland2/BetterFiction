@@ -31,10 +31,6 @@ const sendMessage = (payload) => {
     return chrome.runtime.sendMessage(payload).then(response => response.result).catch(() => ({}));
 };
 
-const isStoryPage = () => {
-    return /^\/s\/\d+(?:\/\d+)?/.test(location.pathname);
-}
-
 const adblock = (info) => {
     if (info.adblock) {
         document.querySelectorAll('.adsbygoogle').forEach((element) => element.remove());
@@ -540,17 +536,18 @@ const main = async () => {
         shortcuts(info);
         profileSorts(info);
 
+        let id;
         let imagesParent = document.querySelectorAll('.z-list');
         if (!imagesParent.length) imagesParent = document.querySelectorAll('#profile_top');
         imagesParent.forEach((element) => {
-            if (!isStoryPage()) separateFics(info, element);
             bigCover(info, element);
             betterDescription(info, element);
+            id = document.querySelector('.idmetatype-val')?.innerText.trim() || '';
+            if (!id) separateFics(info, element);
             const chapters = Number(element.querySelector('.chaptersmetatype-val')?.innerText || 1);
             markBookmark(info, element, dir, chapters);
         });
 
-        const id = document.querySelector('.idmetatype-val')?.innerText.trim() || '';
         if (id) {
             const chapters = Number(document.querySelector('.chaptersmetatype-val')?.innerText || 1);
             const chapSelects = document.querySelectorAll('#chap_select');
