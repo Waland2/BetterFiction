@@ -46,39 +46,36 @@ const copy = (info) => {
     }
 };
 
+const icon = (d, fillColor, strokeColor) => 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg"><path d="${d}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="2"/></svg>`);
+const bookmarkIcon = (color) => icon('m6 4v16l6-2 6 2V4z', color, '#333298');
+
 const shortcuts = (info) => {
     const topMenu = document.querySelector('div')?.querySelector('div');
     if (!topMenu) {
         return;
     }
 
-    const icon = (title) => `<img src="${chrome.runtime.getURL(`icons/${title.toLowerCase()}.svg`)}" style="vertical-align: middle; cursor: default;" width="20" height="20" title="${title}" alt="${title}">`;
-
-    if (info.bookmarks) {
+    const makeIcon = (name, icon, link, addStyle='') => {
         topMenu.appendChild(Object.assign(document.createElement('span'), {
             innerHTML:
-                `<a href='${chrome.runtime.getURL('tabs/bookmarks/bookmarks.html')}' target="_blank"  style='margin-left: 10px;'>
-                    ${icon('Bookmarks')}
-                </a>`,
-            id: 'openBookmarks'
-        }));
-    }
-
-    if (info.shortcuts) {
-        topMenu.appendChild(Object.assign(document.createElement('div'), {
-            style: 'position: relative; display: inline-block; margin-bottom: 0px;'
-        }));
-        topMenu.lastChild.attachShadow({ mode: 'open' }).appendChild(Object.assign(document.createElement('span'), {
-            innerHTML:
-                `<a href='https://www.fanfiction.net/favorites/story.php' style='margin-left: 10px;'>
-                    ${icon('Favorites')}
-                </a>
-                <a href='https://www.fanfiction.net/alert/story.php' style='margin-left: 8px;'>
-                    ${icon('Follows')}
+                `<a href='${link}' target="_blank" style='position: relative; cursor: default; display: inline-block; margin-left: 10px;'>
+                    <img src="${icon}" style="vertical-align: middle; ${addStyle}" width="24" height="24" title="${name}" alt="${name}">
                 </a>`
         }));
     }
+
+    if (info.bookmarks) {
+        makeIcon('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -2px 0px rgba(255,255,255,1));')
+    }
+
+    if (info.shortcuts) {
+        const favsIcon = icon('m12 21-6-6c-9-8 4-12 6-7 2-5 15-1 6 7z', '#fff', '#333298');
+        makeIcon('Favorites', favsIcon, 'https://www.fanfiction.net/favorites/story.php');
+        const alertsIcon = icon('M7 4h2l3 1 10-1 1 1v14H1V5zM3 6v11h8V7C9 6 5 6 3 7m10-1v11h8V6zm7-6q1 8-1 11s-3 4-5 5q-1-9 1-11', '#fff', 'none');
+        makeIcon('Alerts', alertsIcon, 'https://www.fanfiction.net/alerts/story.php');
+    }
 };
+
 
 const separateFics = (info, element) => {
     if (info.separateFics) {
@@ -238,19 +235,17 @@ const betterDescription = (info, element) => {
 };
 
 const colorBookmark = (info, chapters, chapter) => {
-    let icon = 'icons/bookmark';
+    let color = '#237804';
     if (info.colorBookmarks && chapter !== chapters) {
         if (chapter === 1) {
-            icon += '-planned';
+            color = '#d48806';
         } else if (chapter < chapters) {
-            icon += '-ongoing';
+            color = '#096dd9';
         } else {
-            icon += '-error';
+            icon += '#a8071a';
         }
-    } else {
-        icon += '-complete';
     }
-    return chrome.runtime.getURL(icon + '.svg');
+    return bookmarkIcon(color);
 };
 
 const markBookmark = (info, element, dir, chapters) => {
@@ -261,8 +256,8 @@ const markBookmark = (info, element, dir, chapters) => {
             const src = colorBookmark(info, chapters, dir[id].chapter);
             element.querySelector('div')?.before(Object.assign(document.createElement('img'), {
                 src,
-                width: 14,
-                height: 14
+                width: 24,
+                height: 24
             }));
         }
     }
@@ -291,8 +286,8 @@ const bookmarks = (info, dir, id, chapters, chapter, follow) => {
         return '';
     }
 
-    const iconUnmarked = `<img src="${chrome.runtime.getURL('icons/bookmark.svg')}" width="20" height="20">`;
-    const iconMarked = `<img src="${colorBookmark(info, chapters, chapter)}" width="20" height="20">`;
+    const iconUnmarked = `<img src="${bookmarkIcon('none')}" width="24" height="24">`;
+    const iconMarked = `<img src="${colorBookmark(info, chapters, chapter)}" width="24" height="24">`;
     const preStoryLinks = document.querySelector('#pre_story_links')?.querySelectorAll('a');
     const fandom = preStoryLinks?.[1]?.innerText || preStoryLinks?.[0]?.innerText || '';
     const author = document.querySelector('#profile_top a')?.innerText || '';
