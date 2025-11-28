@@ -65,14 +65,12 @@ const shortcuts = (info) => {
     }
 
     if (info.bookmarks) {
-        makeIcon('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -2px 0px rgba(255,255,255,1));')
+        makeIcon('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -1px 0px rgba(255,255,255,1));')
     }
 
     if (info.shortcuts) {
-        const favsIcon = icon('m12 21-6-6c-9-8 4-12 6-7 2-5 15-1 6 7z', '#fff', '#333298');
-        makeIcon('Favorites', favsIcon, 'https://www.fanfiction.net/favorites/story.php');
-        const alertsIcon = icon('M7 4h2l3 1 10-1 1 1v14H1V5zM3 6v11h8V7C9 6 5 6 3 7m10-1v11h8V6zm7-6q1 8-1 11s-3 4-5 5q-1-9 1-11', '#fff', 'none');
-        makeIcon('Alerts', alertsIcon, 'https://www.fanfiction.net/alert/story.php');
+        makeIcon('Favorites', icon('m12 21-7-7C-6 4 10 0 12 6c2-6 18-1 7 8z', '#fff', '#333298'), 'https://www.fanfiction.net/favorites/story.php');
+        makeIcon('Alerts', icon('M7 4h2l3 1 10-1 1 1v14H1V5zM3 6v11h8V7C9 6 5 6 3 7m10-1v11h8V6zm7-6q1 8-1 11s-3 4-5 5q-1-9 1-11', '#fff', 'none'), 'https://www.fanfiction.net/alert/story.php');
     }
 };
 
