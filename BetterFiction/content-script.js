@@ -236,7 +236,7 @@ const betterDescription = (info, element) => {
 
 const colorBookmark = (info, chapters, chapter) => {
     let color = '#237804';
-    if (info.colorBookmarks && chapter !== chapters) {
+    if (info.organizer && chapter !== chapters) {
         if (chapter === 1) {
             color = '#d48806';
         } else if (chapter < chapters) {

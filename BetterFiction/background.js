@@ -6,7 +6,6 @@
 const primaryFunctions = [
     'autoSave',
     'markBookmarks',
-    'colorBookmarks',
     'organizer',
     'entireWork',
     'groupDescriptions',
@@ -31,7 +30,6 @@ const secondaryFunctions = [
 // Default values for primary functions
 const primaryDefaults = {
     markBookmarks: true,
-    colorBookmarks: true,
     entireWork: true,
     groupDescriptions: true,
     styleDescriptions: true,
