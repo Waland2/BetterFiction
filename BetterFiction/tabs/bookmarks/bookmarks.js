@@ -5,37 +5,28 @@ const formatDate = (addTime) => {
     if (!addTime) return '-';
     if (addTime.includes('/')) {
         const [day, month, year] = addTime.split('/');
-        return `${month}.${day}.${year}`;
+        return `${month}/${day}/${year}`;
     } else {
         const date = new Date(addTime);
         const day = date.getDate().toString().padStart(2, '0');
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const year = date.getFullYear();
-        return `${month}.${day}.${year}`;
+        return `${month}/${day}/${year}`;
     }
 };
 
-function sortBookmarks(bookmarks, sortType, sortDirection) {
-    if (sortType === 'addTime') {
-        bookmarks.sort((a, b) => {
-            if (a.displayDate === '-') return 1;
-            if (b.displayDate === '-') return -1;
-            const aDate = a.displayDate.replaceAll('.', '/');
-            const bDate = b.displayDate.replaceAll('.', '/');
-            return new Date(bDate) - new Date(aDate);
-        });
-    } else {
-        bookmarks.sort((a, b) => {
-            let aValue = a[sortType];
-            let bValue = b[sortType];
-            if (sortType === 'chapter') {
-                aValue = parseInt(aValue);
-                bValue = parseInt(bValue);
-            }
-            return bValue > aValue ? 1 : -1;
-        });
-    }
-    if (sortDirection === 1) bookmarks.reverse();
+function sortBookmarks(bookmarks, type, dir) {
+    const cache = new Map(bookmarks.map(b => [b, 
+        type === 'addTime' ? (b.displayDate === '-' ? Infinity : new Date(b.displayDate).getTime())
+        : type === 'chapter' ? parseInt(b[type]) 
+        : b[type]
+    ]));
+
+    bookmarks.sort((a, b) => {
+        const valA = cache.get(a);
+        const valB = cache.get(b);
+        return ((valA > valB) - (valA < valB)) * dir;
+    });
 }
 
 function renderBookmarks(bookmarks) {
@@ -154,7 +145,7 @@ chrome.storage.local.get().then((result) => {
             .then(() => location.reload())
             .catch(console.error);
     } else {
-        sortBookmarks(bookmarkLinks, 'addTime', 0);
+        sortBookmarks(bookmarkLinks, 'addTime', 1);
         renderBookmarks(bookmarkLinks);
     }
 }).catch((error) => {
@@ -208,14 +199,14 @@ document.querySelector('#import').addEventListener('click', () => {
 document.querySelectorAll('th[data-sort-type]').forEach(header => {
     header.addEventListener('click', () => {
         const sortType = header.getAttribute('data-sort-type');
-        let sortDirection = 0;
+        let sortDirection = 1;
 
         if (header.classList.contains('descending')) {
             header.classList.remove('descending');
-            sortDirection = 0;
+            sortDirection = 1;
         } else {
             header.classList.add('descending');
-            sortDirection = 1;
+            sortDirection = -1;
         }
 
         document.querySelectorAll('th').forEach(h => h.classList.remove('active'));
