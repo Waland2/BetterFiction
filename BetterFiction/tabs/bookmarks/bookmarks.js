@@ -35,7 +35,11 @@ function renderBookmarks(bookmarks) {
 }
 
 function findStatus(bookmark) {
-    return bookmark.status !== 'Automatic' ? bookmark.status : bookmark.chapter === bookmark.chapters ? 'Completed' : bookmark.chapter === '1' ? 'Planned' : 'Reading';
+    if (bookmark.status === 'Automatic') {
+        if (bookmark.chapter === bookmark.chapters) return 'Completed';
+        if (bookmark.chapter === 1) return 'Planned';
+        return 'Reading';
+    }
 }
 
 function createBookmarkRow(bookmark) {
