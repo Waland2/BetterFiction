@@ -337,7 +337,9 @@ const bookmarks = (info, dir, id, chapters, chapter, follow) => {
                 });
             } else {
                 const lastBookmark = document.querySelector(`#bookmark${dir[id]?.chapter || 0}`)
+                let status = 'Automatic';
                 if (lastBookmark) {
+                    status = dir[id].status;
                     lastBookmark.click();
                 }
                 button.innerHTML = iconMarked;
@@ -351,7 +353,7 @@ const bookmarks = (info, dir, id, chapters, chapter, follow) => {
                     author,
                     storyName,
                     addTime: new Date().toISOString(),
-                    status: 'Automatic'
+                    status
                 };
                 dir[id] = bookmarkInfo;
                 bookmarkInfo.message = 'set-bookmark';
