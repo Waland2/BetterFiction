@@ -416,7 +416,7 @@ const story = (info, dir, id, chapters, chapSelects, storyTexts, follow, isEntir
             innerHTML: (isEntireWork ? '<br>' + `<h4 style='user-select: text'>${chapterTitle}</h4>` + '<hr size="1" noshade style="background: #e2e2e2; height: 1px;">' : '<br>' + `<h4 style='user-select: text; height: 15px'> </h4>` + '<hr size="1" noshade style="background: #e2e2e2; height: 1px;">')
         });
 
-        span.querySelector('h4').after(bookmarks(info, dir, id, chapters, chapter, follow));
+        if (chapter <= chapters) span.querySelector('h4').after(bookmarks(info, dir, id, chapters, chapter, follow));
 
         if (!document.querySelector("#organizer-status-selecter")) chapSelects[0].after(organizer(info, dir, id));
         return span;
@@ -486,14 +486,13 @@ const entireWork = (info, dir, id, chapters, chapSelects, storyTexts, follow) =>
                         break;
                     }
                     story(info, dir, id, chapters, chapSelects, storyTexts, follow, true);
+                    storyContrast.click();
+                    storyContrast.click();
                 }
             };
-
             finalSeparator.querySelector('hr').after(loadMore);
             loadMore.click();
         };
-        storyContrast.click();
-        storyContrast.click();
         follow.after(button);
 
     }
