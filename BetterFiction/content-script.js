@@ -235,11 +235,11 @@ const betterDescription = (info, element) => {
 const colorBookmark = (info, dir, id, chapters, chapter) => {
     let color = '#096dd9';
     if (info.organizer) {
-        if (dir[id].status === 'Completed' || (dir[id].status === 'Automatic' && chapter === chapters)) {
+        if (dir[id]?.status === 'Completed' || (dir[id]?.status === 'Automatic' && chapter === chapters)) {
             color = '#237804';
-        } else if (dir[id].status === 'Planned' || (dir[id].status === 'Automatic' && chapter === 1)) {
+        } else if (dir[id]?.status === 'Planned' || (dir[id]?.status === 'Automatic' && chapter === 1)) {
             color = '#d48806';
-        } else if (dir[id].status === 'Dropped') {
+        } else if (dir[id]?.status === 'Dropped') {
             color = '#a8071a';
         }
     }
@@ -250,7 +250,7 @@ const markBookmark = (info, element, dir, chapters) => {
     if (info.markBookmarks) {
         const id = element.querySelector('a')?.href.match(/fanfiction\.net\/s\/(\d+)/)?.[1];
         if (id && dir[id]?.chapter) {
-            if (dir[id]?.chapters !== chapters) {
+            if (dir[id].chapters !== chapters) {
                 const bookmarkInfo = dir[id];
                 bookmarkInfo.chapters = chapters;
                 bookmarkInfo.message = 'set-bookmark';
@@ -540,7 +540,7 @@ const main = async () => {
             storyTexts[0].parentElement.id = 'storytext';
             const follow = document.querySelector('.icon-heart');
 
-            if (dir[id]?.chapters !== chapters) {
+            if (dir[id] && dir[id].chapters !== chapters) {
                 const bookmarkInfo = dir[id];
                 bookmarkInfo.chapters = chapters;
                 bookmarkInfo.message = 'set-bookmark';
