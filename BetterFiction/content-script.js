@@ -62,7 +62,7 @@ const shortcuts = (info) => {
                     <img src="${icon}" style="vertical-align: middle; ${addStyle}" width="24" height="24" title="${name}" alt="${name}">
                 </a>`
         }));
-    }
+    };
 
     if (info.bookmarks) {
         makeIcon('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -1px 0px rgba(255,255,255,1));')
@@ -153,7 +153,7 @@ const groupDescription = (info, description) => {
             ratedSpanValue.innerHTML = 'Rated: ' + ratedSpanValue.innerHTML.replace('Fiction ', '');
         }
     }
-}
+};
 
 const storyContrast = document.querySelector('[title=\'Story Contrast\']');
 const styleDescription = (info, description) => {
@@ -184,7 +184,7 @@ const styleDescription = (info, description) => {
             storyContrast.onclick = colorDescription;
         }
     }
-}
+};
 
 const betterDescription = (info, element) => {
     const description = element.querySelector('.xgray');
@@ -497,7 +497,7 @@ const entireWork = (info, dir, id, chapters, chapSelects, storyTexts, follow) =>
         follow.after(button);
 
     }
-}
+};
 
 const main = async () => {
     const info = await sendMessage({

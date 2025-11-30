@@ -18,7 +18,7 @@ const formatDate = (addTime) => {
 function sortBookmarks(bookmarks, type, dir) {
     const cache = new Map(bookmarks.map(b => [b, 
         type === 'addTime' ? (b.displayDate === '-' ? Infinity : new Date(b.displayDate).getTime())
-        : (type === 'chapter' || type === 'chapters')? parseInt(b[type]) 
+        : type === 'chapter' ? parseInt(b[type])
         : b[type]
     ]));
 
@@ -47,8 +47,7 @@ function createBookmarkRow(bookmark) {
     tableRow.innerHTML = `
         <td>${bookmark.id}</td>
         <td><a href="https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}">${bookmark.storyName}</a></td>
-        <td>${bookmark.chapter}</td>
-        <td>${bookmark.chapters}</td>
+        <td>${bookmark.chapter}/${bookmark.chapters || '?'}</td>
         <td>${bookmark.fandom}</td>
         <td>${bookmark.author}</td>
         <td class="status-cell">${findStatus(bookmark)}</td>
