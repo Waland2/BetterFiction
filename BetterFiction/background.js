@@ -81,6 +81,17 @@ chrome.runtime.onInstalled.addListener((details) => {
             console.error('Failed to initialize extension settings during installation:', error);
         });
 
+    chrome.storage.local.get()
+        .then((result) => Object.keys(result).forEach(id => {
+            if (result[id].addTime.includes('/')) {
+                [d, m, y] = result[id].addTime.split('/');
+                result[id].addTime = new Date(`${m}/${d}/${y}`);
+            }
+        });
+        .catch((error) => {
+            console.error('Failed to overwrite legacy date storage during installation:', error);
+        });
+
     if (details.reason === "install") {
         chrome.tabs.create({
             url: chrome.runtime.getURL("tabs/options/options.html")
