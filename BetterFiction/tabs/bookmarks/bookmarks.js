@@ -40,6 +40,7 @@ function findStatus(bookmark) {
         if (bookmark.chapter === 1) return 'Planned';
         return 'Reading';
     }
+    return bookmark.status;
 }
 
 function createBookmarkRow(bookmark) {
@@ -235,8 +236,10 @@ document.querySelectorAll('th[data-sort-type]').forEach(header => {
 function filterBookmarks(status) {
     if (status === 'All') {
         renderBookmarks(bookmarkLinks);
+    } else if (status === 'Automatic') {
+        renderBookmarks(bookmarkLinks.filter(b => b.status === 'Automatic'));
     } else {
-        renderBookmarks(bookmarkLinks.filter(b => b.status === status));
+        renderBookmarks(bookmarkLinks.filter(b => findStatus(b) === status));
     }
 }
 
