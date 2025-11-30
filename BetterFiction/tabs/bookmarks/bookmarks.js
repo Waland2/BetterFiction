@@ -4,32 +4,19 @@ const bookmarkLinks = [];
 const formatDate = (addTime, dateFormat = "MM/DD/YY") => { 
     if (!addTime) return '-';
 
-    let parsedDate;
-    if (addTime.includes('/')) {
-        const [day, month, year] = addTime.split('/');
-        parsedDate = `${month}/${day}/${year}`;
-    } else {
-        const date = new Date(addTime);
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const year = date.getFullYear();
-        parsedDate = `${month}/${day}/${year}`;
-    }
+    let d, m, y;
+    const date = new Date(addTime);
+    d = date.getDate().toString().padStart(2, '0');
+    m = (date.getMonth() + 1).toString().padStart(2, '0');
+    y = date.getFullYear();
 
     if (dateFormat == "MM/DD/YY") {
-        return parsedDate;
-    }
-
-    if (dateFormat == "DD.MM.YYYY") {
-        const [m, d, y] = parsedDate.split('/');
+        return `${m}/${d}/${y}`;
+    } else if (dateFormat == "DD.MM.YYYY") {
         return `${d}.${m}.${y}`;
-    }
-
-    if (dateFormat == "DD Mon YYYY") {
-        const [m, d, y] = parsedDate.split('/');
+    } else if (dateFormat == "DD Mon YYYY") {
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const monthIndex = parseInt(m, 10) - 1;
-        return `${Number(d)} ${monthNames[monthIndex]} ${y}`;
+        return `${Number(d)} ${monthNames[parseInt(m) - 1]} ${y}`;
     }
 };
 
