@@ -34,4 +34,32 @@ window.setupCheckboxes = () => {
         .catch((error) => {
             console.error('Failed to load checkbox states:', error);
         });
-}; 
+};
+
+
+window.setupSelects = () => {
+    const selects = document.querySelectorAll('select');
+
+    chrome.storage.sync.get('settings')
+        .then((result) => {
+            const settings = result.settings || {};
+
+            selects.forEach(select => {
+                if (settings[select.id] !== undefined) {
+                    select.value = settings[select.id];
+                }
+
+                select.addEventListener('change', () => {
+                    settings[select.id] = select.value;
+
+                    chrome.storage.sync.set({ settings })
+                        .catch((error) => {
+                            console.error(`Failed to save select state for ${select.id}:`, error);
+                        });
+                });
+            });
+        })
+        .catch((error) => {
+            console.error('Failed to load select states:', error);
+        });
+};

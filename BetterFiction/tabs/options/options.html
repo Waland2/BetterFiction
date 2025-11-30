@@ -33,7 +33,8 @@
 
             <div class="checkbox-label">
                 <input type="checkbox" id="organizer" />
-                <label for="organizer" title="Allows you to set the statuses Reading/Completed/Dropped/Planned for bookmarks">
+                <label for="organizer"
+                    title="Allows you to set the statuses Reading/Completed/Dropped/Planned for bookmarks">
                     Fanfiction Organizer (Bookmark statuses & colors)
                 </label>
             </div>
@@ -58,6 +59,18 @@
                     title="To highlight information in the fanfic description with different colors">
                     Highlight fics descriptions with colors
                 </label>
+            </div>
+
+            <div class="select-label">
+                <label for="dateFormat" title="Choose how dates will be displayed">
+                    Date format
+                </label>
+
+                <select id="dateFormat">
+                    <option value="MM/DD/YY">MM/DD/YY</option>
+                    <option value="DD.MM.YYYY">DD.MM.YYYY</option>
+                    <option value="DD Mon YYYY">DD Mon YYYY</option>
+                </select>
             </div>
         </div>
 
@@ -132,7 +145,7 @@
 
     </main>
 
-    <script src="../../utils/checkbox-handler.js"></script>
+    <script src="../../utils/handlers.js"></script>
     <script src="options.js"></script>
 </body>
 

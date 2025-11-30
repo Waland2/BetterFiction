@@ -1,25 +1,44 @@
 const tableBody = document.querySelector('tbody');
 const bookmarkLinks = [];
 
-const formatDate = (addTime) => {
+const formatDate = (addTime, dateFormat = "MM/DD/YY") => { 
     if (!addTime) return '-';
+
+    let parsedDate;
     if (addTime.includes('/')) {
         const [day, month, year] = addTime.split('/');
-        return `${month}/${day}/${year}`;
+        parsedDate = `${month}/${day}/${year}`;
     } else {
         const date = new Date(addTime);
         const day = date.getDate().toString().padStart(2, '0');
         const month = (date.getMonth() + 1).toString().padStart(2, '0');
         const year = date.getFullYear();
-        return `${month}/${day}/${year}`;
+        parsedDate = `${month}/${day}/${year}`;
+    }
+
+    if (dateFormat == "MM/DD/YY") {
+        return parsedDate;
+    }
+
+    if (dateFormat == "DD.MM.YYYY") {
+        const [m, d, y] = parsedDate.split('/');
+        return `${d}.${m}.${y}`;
+    }
+
+    if (dateFormat == "DD Mon YYYY") {
+        const [m, d, y] = parsedDate.split('/');
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const monthIndex = parseInt(m, 10) - 1;
+        return `${Number(d)} ${monthNames[monthIndex]} ${y}`;
     }
 };
 
+
 function sortBookmarks(bookmarks, type, dir) {
-    const cache = new Map(bookmarks.map(b => [b, 
-        type === 'addTime' ? (b.displayDate === '-' ? Infinity : new Date(b.displayDate).getTime())
-        : (type === 'chapter' || type === 'chapters')? parseInt(b[type]) 
-        : b[type]
+    const cache = new Map(bookmarks.map(b => [b,
+        type === 'addTime' ? (b.addTime === '-' ? Infinity : new Date(b.addTime).getTime()) 
+            : (type === 'chapter' || type === 'chapters') ? parseInt(b[type])
+                : b[type]
     ]));
 
     bookmarks.sort((a, b) => {
@@ -110,6 +129,14 @@ function createBookmarkRow(bookmark) {
     return tableRow;
 }
 
+let settings;
+chrome.storage.sync.get().then((result) => {
+    settings = result.settings;
+})
+.catch((error) => {
+    console.error('Failed to load settings from sync storage:', error);
+});
+
 // Normalize and load bookmarks
 chrome.storage.local.get().then((result) => {
     let bookmarks = result;
@@ -142,7 +169,7 @@ chrome.storage.local.get().then((result) => {
         }
 
         if (bookmark.storyName) {
-            bookmark.displayDate = formatDate(bookmark.addTime);
+            bookmark.displayDate = formatDate(bookmark.addTime, settings.dateFormat);
             bookmarkLinks.push(bookmark);
         }
     }
@@ -290,7 +317,7 @@ const hideOrganizerUI = () => {
 // Hide organizer ui if it off
 chrome.storage.sync.get('settings')
     .then(({ settings = {} }) => {
-        if (settings.organizer) return; 
+        if (settings.organizer) return;
 
         hideOrganizerUI();
 

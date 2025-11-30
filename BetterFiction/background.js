@@ -10,6 +10,7 @@ const primaryFunctions = [
     'entireWork',
     'groupDescriptions',
     'styleDescriptions',
+    'dateFormat',
 ];
 
 /**
@@ -34,6 +35,7 @@ const primaryDefaults = {
     groupDescriptions: true,
     styleDescriptions: true,
     organizer: true,
+    dateFormat: "MM/DD/YY"
 };
 
 const legacyMap = {
