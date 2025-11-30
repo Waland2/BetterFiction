@@ -18,7 +18,7 @@ const formatDate = (addTime) => {
 function sortBookmarks(bookmarks, type, dir) {
     const cache = new Map(bookmarks.map(b => [b, 
         type === 'addTime' ? (b.displayDate === '-' ? Infinity : new Date(b.displayDate).getTime())
-        : type === 'chapter' ? parseInt(b[type]) 
+        : (type === 'chapter' || type === 'chapters')? parseInt(b[type]) 
         : b[type]
     ]));
 
@@ -34,15 +34,20 @@ function renderBookmarks(bookmarks) {
     bookmarks.forEach(bookmark => tableBody.appendChild(createBookmarkRow(bookmark)));
 }
 
+function findStatus(bookmark) {
+    return bookmark.status !== 'Automatic' ? bookmark.status : bookmark.chapter === bookmark.chapters ? 'Completed' : bookmark.chapter === '1' ? 'Planned' : 'Reading';
+}
+
 function createBookmarkRow(bookmark) {
     const tableRow = document.createElement('tr');
     tableRow.innerHTML = `
         <td>${bookmark.id}</td>
-        <td><a href="https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}/${bookmark.storyName.replaceAll(' ', '-')}">${bookmark.storyName}</a></td>
+        <td><a href="https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}">${bookmark.storyName}</a></td>
         <td>${bookmark.chapter}</td>
+        <td>${bookmark.chapters}</td>
         <td>${bookmark.fandom}</td>
         <td>${bookmark.author}</td>
-        <td class="status-cell">${bookmark.status}</td>
+        <td class="status-cell">${findStatus(bookmark)}</td>
         <td>${bookmark.displayDate}</td>
         <td class="options-cell">
             <a href="#" class="change-link">Change status</a>
@@ -52,7 +57,8 @@ function createBookmarkRow(bookmark) {
     `;
 
     const statusCell = tableRow.querySelector('.status-cell');
-    statusCell.innerHTML = `<span class="status-badge ${bookmark.status}">${bookmark.status}</span>`;
+    let statusValue = findStatus(bookmark);
+    statusCell.innerHTML = `<span class="status-badge ${statusValue}">${statusValue}</span>`;
 
     const optionsCell = tableRow.querySelector('.options-cell');
     const deleteLink = optionsCell.querySelector('.delete-link');
@@ -74,6 +80,7 @@ function createBookmarkRow(bookmark) {
         const select = document.createElement('select');
         select.className = 'status-select';
         select.innerHTML = `
+            <option value="Automatic">Automatic</option>
             <option value="Planned">Planned</option>
             <option value="Reading">Reading</option>
             <option value="Completed">Completed</option>
@@ -85,8 +92,9 @@ function createBookmarkRow(bookmark) {
 
         select.addEventListener('change', () => {
             bookmark.status = select.value;
-            statusCell.textContent = bookmark.status;
-            statusCell.innerHTML = `<span class="status-badge ${bookmark.status}">${bookmark.status}</span>`;
+            statusValue = findStatus(bookmark);
+            statusCell.textContent = statusValue;
+            statusCell.innerHTML = `<span class="status-badge ${statusValue}">${statusValue}</span>`;
 
 
             chrome.storage.local.set({ [bookmark.id]: bookmark }).catch(err =>
@@ -129,7 +137,7 @@ chrome.storage.local.get().then((result) => {
         }
 
         if (!('status' in bookmark)) {
-            bookmark.status = 'Reading';
+            bookmark.status = 'Automatic';
             needToUpdate = true;
         }
 
@@ -238,6 +246,10 @@ function setFilterActive(id) {
 document.querySelector('#filter-all').addEventListener('click', () => {
     setFilterActive('filter-all');
     filterBookmarks('All');
+});
+document.querySelector('#filter-automatic').addEventListener('click', () => {
+    setFilterActive('filter-automatic');
+    filterBookmarks('Automatic');
 });
 document.querySelector('#filter-planned').addEventListener('click', () => {
     setFilterActive('filter-planned');

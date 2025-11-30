@@ -94,12 +94,13 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
         chrome.storage.local.set({
             [action.id]: {
                 chapter: action.chapter,
+                chapters: action.chapters,
                 id: action.id,
                 fandom: action.fandom,
                 author: action.author,
                 storyName: action.storyName,
-                addTime: new Date().toISOString(),
-                status: 'Reading'
+                addTime: action.addTime,
+                status: action.status
             },
         })
             .catch((error) => {
