@@ -337,9 +337,8 @@ const bookmarks = (info, dir, id, chapters, chapter, follow) => {
                 });
             } else {
                 const lastBookmark = document.querySelector(`#bookmark${dir[id]?.chapter || 0}`)
-                let status = 'Automatic';
+                let status = dir[id].status;
                 if (lastBookmark) {
-                    status = dir[id].status;
                     lastBookmark.click();
                 }
                 button.innerHTML = iconMarked;
