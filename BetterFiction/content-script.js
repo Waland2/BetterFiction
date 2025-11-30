@@ -55,7 +55,7 @@ const shortcuts = (info) => {
         return;
     }
 
-    const makeIcon = (name, icon, link, addStyle='') => {
+    const makeIcon = (name, icon, link, addStyle = '') => {
         topMenu.appendChild(Object.assign(document.createElement('span'), {
             innerHTML:
                 `<a href='${link}' target="_blank" style='position: relative; cursor: default; display: inline-block; margin-left: 10px;'>
@@ -110,7 +110,7 @@ const profileSorts = (info) => {
                     className: 'gray',
                     onclick: () => {
                         const sorted = Array.from(placeElem.querySelectorAll(`.${storyType}`)).sort((a, b) => {
-                            const get = (s) => Number(s.querySelector(`.${meta}value`)?.innerText.replaceAll(',', '')) || 0;
+                            const get = (s) => Number(s.querySelector(`.${meta.toLowerCase()}value`)?.innerText.replaceAll(',', '')) || 0;
                             return get(b) - get(a);
                         });
                         placeElem.querySelectorAll(`.${storyType}`).forEach((element) => element.remove());
