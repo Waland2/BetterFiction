@@ -62,7 +62,7 @@ const shortcuts = (info) => {
                     <img src="${icon}" style="vertical-align: middle; ${addStyle}" width="24" height="24" title="${name}" alt="${name}">
                 </a>`
         }));
-    }
+    };
 
     if (info.bookmarks) {
         makeIcon('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -1px 0px rgba(255,255,255,1));')
@@ -153,7 +153,7 @@ const groupDescription = (info, description) => {
             ratedSpanValue.innerHTML = 'Rated: ' + ratedSpanValue.innerHTML.replace('Fiction ', '');
         }
     }
-}
+};
 
 const storyContrast = document.querySelector('[title=\'Story Contrast\']');
 const styleDescription = (info, description) => {
@@ -184,7 +184,7 @@ const styleDescription = (info, description) => {
             storyContrast.onclick = colorDescription;
         }
     }
-}
+};
 
 const betterDescription = (info, element) => {
     const description = element.querySelector('.xgray');
@@ -288,7 +288,6 @@ const wordCounter = (info, chapSelects, storyTexts) => {
 const bookmarks = (info, dir, id, chapters, chapter, follow) => {
     if (info.bookmarks) {
         const iconUnmarked = `<img src="${bookmarkIcon('none')}" width="24" height="24">`;
-        const iconMarked = `<img src="${colorBookmark(info, dir, id, chapters, chapter)}" width="24" height="24">`;
         const preStoryLinks = document.querySelector('#pre_story_links')?.querySelectorAll('a');
         const fandom = preStoryLinks?.[1]?.innerText || preStoryLinks?.[0]?.innerText || '';
         const author = document.querySelector('#profile_top a')?.innerText || '';
@@ -320,7 +319,7 @@ const bookmarks = (info, dir, id, chapters, chapter, follow) => {
             type: 'button',
             className: 'btn pull-right bookmark',
             title: 'bookmark',
-            innerHTML: dir[id]?.chapter === chapter ? iconMarked : iconUnmarked,
+            innerHTML: dir[id]?.chapter === chapter ? `<img src="${colorBookmark(info, dir, id, chapters, chapter)}" width="24" height="24">` : iconUnmarked,
             id: `bookmark${chapter}`,
             style: 'height: 30px;'
         });
@@ -341,9 +340,6 @@ const bookmarks = (info, dir, id, chapters, chapter, follow) => {
                 if (lastBookmark) {
                     lastBookmark.click();
                 }
-                button.innerHTML = iconMarked;
-                go.style.display = '';
-                document.querySelector('#organizer-status-selecter').style.display = '';
                 const bookmarkInfo = {
                     chapter,
                     chapters,
@@ -355,6 +351,9 @@ const bookmarks = (info, dir, id, chapters, chapter, follow) => {
                     status
                 };
                 dir[id] = bookmarkInfo;
+                button.innerHTML = `<img src="${colorBookmark(info, dir, id, chapters, chapter)}" width="24" height="24">`;
+                go.style.display = '';
+                document.querySelector('#organizer-status-selecter').style.display = '';
                 bookmarkInfo.message = 'set-bookmark';
                 sendMessage(bookmarkInfo);
             }
@@ -498,7 +497,7 @@ const entireWork = (info, dir, id, chapters, chapSelects, storyTexts, follow) =>
         follow.after(button);
 
     }
-}
+};
 
 const main = async () => {
     const info = await sendMessage({

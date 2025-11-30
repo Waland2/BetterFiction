@@ -37,7 +37,7 @@ const formatDate = (addTime, dateFormat = "MM/DD/YY") => {
 function sortBookmarks(bookmarks, type, dir) {
     const cache = new Map(bookmarks.map(b => [b,
         type === 'addTime' ? (b.addTime === '-' ? Infinity : new Date(b.addTime).getTime()) 
-            : (type === 'chapter' || type === 'chapters') ? parseInt(b[type])
+            : type === 'chapter' ? parseInt(b[type])
                 : b[type]
     ]));
 
@@ -54,7 +54,12 @@ function renderBookmarks(bookmarks) {
 }
 
 function findStatus(bookmark) {
-    return bookmark.status !== 'Automatic' ? bookmark.status : bookmark.chapter === bookmark.chapters ? 'Completed' : bookmark.chapter === '1' ? 'Planned' : 'Reading';
+    if (bookmark.status === 'Automatic') {
+        if (bookmark.chapter === bookmark.chapters) return 'Completed';
+        if (bookmark.chapter === 1) return 'Planned';
+        return 'Reading';
+    }
+    return bookmark.status;
 }
 
 function createBookmarkRow(bookmark) {
@@ -62,8 +67,7 @@ function createBookmarkRow(bookmark) {
     tableRow.innerHTML = `
         <td>${bookmark.id}</td>
         <td><a href="https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}">${bookmark.storyName}</a></td>
-        <td>${bookmark.chapter}</td>
-        <td>${bookmark.chapters}</td>
+        <td>${bookmark.chapter}/${bookmark.chapters || '?'}</td>
         <td>${bookmark.fandom}</td>
         <td>${bookmark.author}</td>
         <td class="status-cell">${findStatus(bookmark)}</td>
@@ -259,8 +263,10 @@ document.querySelectorAll('th[data-sort-type]').forEach(header => {
 function filterBookmarks(status) {
     if (status === 'All') {
         renderBookmarks(bookmarkLinks);
+    } else if (status === 'Automatic') {
+        renderBookmarks(bookmarkLinks.filter(b => b.status === 'Automatic'));
     } else {
-        renderBookmarks(bookmarkLinks.filter(b => b.status === status));
+        renderBookmarks(bookmarkLinks.filter(b => findStatus(b) === status));
     }
 }
 
