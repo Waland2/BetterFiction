@@ -87,7 +87,7 @@ chrome.runtime.onInstalled.addListener((details) => {
                 [d, m, y] = result[id].addTime.split('/');
                 result[id].addTime = new Date(`${m}/${d}/${y}`);
             }
-        });
+        }))
         .catch((error) => {
             console.error('Failed to overwrite legacy date storage during installation:', error);
         });

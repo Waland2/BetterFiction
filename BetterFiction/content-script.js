@@ -550,6 +550,9 @@ const main = async () => {
             if (info.bookmarks && info.autoSave && (dir[id]?.chapter || 0) < chapter) {
                 document.querySelector(`#bookmark${chapter}`).click();
             }
+
+            storyContrast.click();
+            storyContrast.click();
         }
     } catch (e) {
         console.log("content-script.js did not run correctly, ", e);
