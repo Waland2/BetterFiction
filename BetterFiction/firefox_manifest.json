@@ -1,0 +1,39 @@
+{
+    "name": "BetterFiction - FanFiction.net improver",
+    "version": "1.1.9",
+    "manifest_version": 3,
+    "description": "BetterFiction - Extension to improve the experience of using the site fanfiction.net",
+    "author": "Waland2 & shahaadi",
+    "icons": {
+        "16": "icons/ava.svg",
+        "32": "icons/ava.svg",
+        "128": "icons/ava.svg"
+    },
+    "permissions": ["storage", "unlimitedStorage", "activeTab"],
+    "background": {
+        "scripts": ["background.js"],
+        "type": "module"
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://www.fanfiction.net/*"],
+            "run_at": "document_end",
+            "js": ["content-script.js"]
+        }
+    ],
+    "host_permissions": ["https://www.fanfiction.net/*"],
+    "web_accessible_resources": [
+        {
+            "resources": ["icons/*", "utils/*", "tabs/*"],
+            "matches": ["https://www.fanfiction.net/*"]
+        }
+    ],
+    "action": {
+        "default_popup": "popup/popup.html"
+    },
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "addon@BetterFiction.com"
+        }
+    }
+}

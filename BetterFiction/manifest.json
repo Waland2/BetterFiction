@@ -1,0 +1,33 @@
+{
+    "name": "BetterFiction",
+    "version": "1.1.9",
+    "manifest_version": 3,
+    "description": "FanFiction.net improver",
+    "author": "Waland2 & shahaadi",
+    "icons": {
+        "16": "icons/ava.svg",
+        "32": "icons/ava.svg",
+        "128": "icons/ava.svg"
+    },
+    "permissions": ["storage", "unlimitedStorage"],
+    "background": {
+        "service_worker": "background.js"
+    },
+    "content_scripts": [
+        {
+            "matches": ["https://www.fanfiction.net/*"],
+            "run_at": "document_end",
+            "js": ["content-script.js"]
+        }
+    ],
+    "host_permissions": ["https://www.fanfiction.net/*"],
+    "web_accessible_resources": [
+        {
+            "resources": ["icons/*", "utils/*", "tabs/*"],
+            "matches": ["https://www.fanfiction.net/*"]
+        }
+    ],
+    "action": {
+        "default_popup": "popup/popup.html"
+    }
+}

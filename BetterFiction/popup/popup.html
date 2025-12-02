@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>BetterFiction</title>
+        <link rel="stylesheet" type="text/css" href="popup.css" />
+    </head>
+    <body>
+        <div class="header">
+            <img
+                src="../icons/settings.svg"
+                alt="settings"
+                id="det-setting"
+                title="Detailed settings"
+            />
+            <span id="ext-version"></span>
+        </div>
+
+        <div class="content">
+            <div class="ava">
+                <h1>BetterFiction</h1>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="autoSave" />
+                <label
+                    for="autoSave"
+                    title="Automatically leave a bookmark at the last read chapter"
+                >
+                    Automatically leave a bookmark
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="markFicWithBookmark" />
+                <label
+                    for="markFicWithBookmark"
+                    title="Mark with color the fanfiction on which the bookmark was left"
+                >
+                    Mark fanfiction with bookmarks
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="allFicButton" />
+                <label for="allFicButton" title="Button to show the entire work">
+                    Entire work button
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="bigCovers" />
+                <label for="bigCovers" title="Enlarge fanfic covers">
+                    Large covers for fics
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="separateFics" />
+                <label for="separateFics" title="Split fanfics into separate blocks">
+                    Divide fics
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="betterInfo" />
+                <label for="betterInfo" title="Group the description of the fanfic">
+                    Grouping fics descriptions
+                </label>
+            </div>
+
+            <div class="checkbox-label">
+                <input type="checkbox" id="betterInfoColor" />
+                <label
+                    for="betterInfoColor"
+                    title="To highlight information in the fanfic description with different colors"
+                >
+                    Highlight fanfic description with colors
+                </label>
+            </div>
+
+            <!-- <div class="checkbox-label">
+                <input type="checkbox" id="myFicList">
+                <label for="myFicList">Fanfiction Organizer</label>
+            </div> -->
+        </div>
+    </body>
+    <script src="../utils/checkbox-handler.js"></script>
+    <script src="popup.js"></script>
+</html>

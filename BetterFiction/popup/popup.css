@@ -1,0 +1,184 @@
+body {
+    width: 280px;
+    background-color: #2d2d2d;
+    color: #ffffff;
+    margin: 0;
+    padding: 0;
+}
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+}
+
+.content {
+    padding: 8px;
+}
+
+.ava {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.ava h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+#det-setting {
+    cursor: pointer;
+    transition: 1s;
+    padding: 2px;
+    border-radius: 50%;
+}
+
+#det-setting:hover {
+    transform: rotate(360deg);
+    transition: 1s;
+    background-color: #252525;
+}
+
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 2.5px;
+    font-size: 13px;
+    transition: 0.15s;
+    border-radius: 4px;
+    padding: 1.5px;
+}
+
+.checkbox-label:hover {
+    background-color: #101010;
+    transition: 0.15s;
+}
+
+label {
+    transition: 0.15s;
+    cursor: pointer;
+}
+
+label:hover {
+    transition: 0.15s;
+}
+
+@supports (-webkit-appearance: none) or (-moz-appearance: none) {
+    .checkbox-label input[type='checkbox'] {
+        --active: #741bfb;
+        --active-inner: #ffffff;
+        --focus: 2px rgba(39, 94, 254, 0.3);
+        --border: #bbc1e1;
+        --border-hover: #741bfb;
+        --background: #ffffff;
+        --disabled: #f6f8ff;
+        --disabled-inner: #e1e6f9;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        height: 15px;
+        outline: none;
+        display: inline-block;
+        vertical-align: top;
+        position: relative;
+        margin: 2px;
+        cursor: pointer;
+        border: 1px solid var(--bc, var(--border));
+        background: var(--b, var(--background));
+        transition:
+            background 0.3s,
+            border-color 0.3s,
+            box-shadow 0.2s;
+    }
+
+    .checkbox-label input[type='checkbox']:after {
+        content: '';
+        display: block;
+        left: 0;
+        top: 0;
+        position: absolute;
+        transition:
+            transform var(--d-t, 0.3s) var(--d-t-e, ease),
+            opacity var(--d-o, 0.2s);
+    }
+
+    .checkbox-label input[type='checkbox']:checked {
+        --b: var(--active);
+        --bc: var(--active);
+        --d-o: 0.3s;
+        --d-t: 0.6s;
+        --d-t-e: cubic-bezier(0.2, 0.85, 0.32, 1.2);
+    }
+
+    .checkbox-label input[type='checkbox']:disabled {
+        --b: var(--disabled);
+        cursor: not-allowed;
+        opacity: 0.9;
+    }
+
+    .checkbox-label input[type='checkbox']:disabled:checked {
+        --b: var(--disabled-inner);
+        --bc: var(--border);
+    }
+
+    .checkbox-label input[type='checkbox']:disabled + label {
+        cursor: not-allowed;
+    }
+
+    .checkbox-label input[type='checkbox']:hover:not(:checked):not(:disabled) {
+        --bc: var(--border-hover);
+    }
+
+    .checkbox-label input[type='checkbox']:focus {
+        box-shadow: 0 0 0 var(--focus);
+    }
+
+    .checkbox-label input[type='checkbox']:not(.switch) {
+        width: 15px;
+    }
+
+    .checkbox-label input[type='checkbox']:not(.switch):after {
+        opacity: var(--o, 0);
+    }
+
+    .checkbox-label input[type='checkbox']:not(.switch):checked {
+        --o: 1;
+    }
+
+    .checkbox-label input[type='checkbox'] + label {
+        display: inline-block;
+        vertical-align: middle;
+        cursor: pointer;
+        margin-left: 4px;
+    }
+
+    .checkbox-label input[type='checkbox']:not(.switch) {
+        border-radius: 4px;
+    }
+
+    .checkbox-label input[type='checkbox']:not(.switch):after {
+        border: 2px solid var(--active-inner);
+        border-top: 0;
+        border-left: 0;
+        width: 3px;
+        height: 6px;
+        left: 5px;
+        top: 2px;
+        transform: rotate(var(--r, 20deg));
+    }
+
+    .checkbox-label input[type='checkbox']:not(.switch):checked {
+        --r: 43deg;
+    }
+}
+
+.checkbox-label * {
+    box-sizing: inherit;
+}
+
+.checkbox-label *:before,
+.checkbox-label *:after {
+}
