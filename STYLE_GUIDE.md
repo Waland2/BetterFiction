@@ -9,20 +9,21 @@
 - Declare variables at the top of their minimum scope when possible
 
 ### 2. Function Declarations
-- Use `function` declarations for named functions
-- Use arrow functions for anonymous functions and callbacks
+- Use arrow functions for all functions and callbacks
 - Use `async/await` instead of Promise chains when possible
-- Keep functions focused and under 50 lines when possible (need to eventually modularize main)
+- Keep functions focused and under 50 lines when possible
 
 ### 3. Promise Handling
 - Always use `.catch()` for error handling
 - Format Promise chains with proper indentation:
 ```javascript
-chrome.storage.sync.get('settings').then((result) => {
-    // handle result
-}).catch((error) => {
-    console.error('Error message:', error);
-});
+chrome.storage.sync.get('settings')
+    .then((result) => {
+        // handle result
+    })
+    .catch((error) => {
+        console.error('Error message:', error);
+    });
 ```
 
 ### 4. Error Handling
@@ -35,7 +36,7 @@ chrome.storage.sync.get('settings').then((result) => {
 - Use single quotes for strings consistently
 - Add semicolons at the end of statements
 - Use consistent spacing around operators and brackets
-- ~~Maximum line length: 100 characters~~ (broken for some html strings, but generally don't try to cram)
+- Maximum line length: 100 characters
 
 ### 6. Naming Conventions
 - Use camelCase for variables and functions
