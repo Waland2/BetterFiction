@@ -121,7 +121,7 @@ header span:hover {
         --bc: var(--border);
     }
 
-    .checkbox-label input[type='checkbox']:disabled + label {
+    .checkbox-label input[type='checkbox']:disabled+label {
         cursor: not-allowed;
     }
 
@@ -145,7 +145,7 @@ header span:hover {
         --o: 1;
     }
 
-    .checkbox-label input[type='checkbox'] + label {
+    .checkbox-label input[type='checkbox']+label {
         display: inline-block;
         vertical-align: middle;
         cursor: pointer;
@@ -204,3 +204,27 @@ header span:hover {
     color: #57b2fc;
 }
 
+.select-label {
+    margin: 10px 0;
+    font-size: 15.6px;
+    color: #cdcdcd;
+}
+
+.select-label label {
+    margin-bottom: 4px;
+}
+
+.select-label select {
+    background-color: #1f1f1f;
+    color: #ffffff;
+    border: 1px solid #4a4a4a;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 15px;
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+.select-label select:hover {
+    border-color: #741bfb;
+}

@@ -1,41 +1,38 @@
 const tableBody = document.querySelector('tbody');
 const bookmarkLinks = [];
 
-const formatDate = (addTime) => {
+const formatDate = (addTime, dateFormat = "MM/DD/YY") => { 
     if (!addTime) return '-';
-    if (addTime.includes('/')) {
-        const [day, month, year] = addTime.split('/');
-        return `${month}.${day}.${year}`;
-    } else {
-        const date = new Date(addTime);
-        const day = date.getDate().toString().padStart(2, '0');
-        const month = (date.getMonth() + 1).toString().padStart(2, '0');
-        const year = date.getFullYear();
-        return `${month}.${day}.${year}`;
+
+    let d, m, y;
+    const date = new Date(addTime);
+    d = date.getDate().toString().padStart(2, '0');
+    m = (date.getMonth() + 1).toString().padStart(2, '0');
+    y = date.getFullYear();
+
+    if (dateFormat == "MM/DD/YY") {
+        return `${m}/${d}/${y}`;
+    } else if (dateFormat == "DD.MM.YYYY") {
+        return `${d}.${m}.${y}`;
+    } else if (dateFormat == "DD Mon YYYY") {
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        return `${Number(d)} ${monthNames[parseInt(m) - 1]} ${y}`;
     }
 };
 
-function sortBookmarks(bookmarks, sortType, sortDirection) {
-    if (sortType === 'addTime') {
-        bookmarks.sort((a, b) => {
-            if (a.displayDate === '-') return 1;
-            if (b.displayDate === '-') return -1;
-            const aDate = a.displayDate.replaceAll('.', '/');
-            const bDate = b.displayDate.replaceAll('.', '/');
-            return new Date(bDate) - new Date(aDate);
-        });
-    } else {
-        bookmarks.sort((a, b) => {
-            let aValue = a[sortType];
-            let bValue = b[sortType];
-            if (sortType === 'chapter') {
-                aValue = parseInt(aValue);
-                bValue = parseInt(bValue);
-            }
-            return bValue > aValue ? 1 : -1;
-        });
-    }
-    if (sortDirection === 1) bookmarks.reverse();
+
+function sortBookmarks(bookmarks, type, dir) {
+    const cache = new Map(bookmarks.map(b => [b,
+        type === 'addTime' ? (b.addTime === '-' ? Infinity : new Date(b.addTime).getTime()) 
+            : type === 'chapter' ? parseInt(b[type])
+                : b[type]
+    ]));
+
+    bookmarks.sort((a, b) => {
+        const valA = cache.get(a);
+        const valB = cache.get(b);
+        return ((valA > valB) - (valA < valB)) * dir;
+    });
 }
 
 function renderBookmarks(bookmarks) {
@@ -43,15 +40,24 @@ function renderBookmarks(bookmarks) {
     bookmarks.forEach(bookmark => tableBody.appendChild(createBookmarkRow(bookmark)));
 }
 
+function findStatus(bookmark) {
+    if (bookmark.status === 'Automatic') {
+        if (bookmark.chapter === bookmark.chapters) return 'Completed';
+        if (bookmark.chapter === 1) return 'Planned';
+        return 'Reading';
+    }
+    return bookmark.status;
+}
+
 function createBookmarkRow(bookmark) {
     const tableRow = document.createElement('tr');
     tableRow.innerHTML = `
         <td>${bookmark.id}</td>
-        <td><a href="https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}/${bookmark.storyName.replaceAll(' ', '-')}">${bookmark.storyName}</a></td>
-        <td>${bookmark.chapter}</td>
+        <td><a href="https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}">${bookmark.storyName}</a></td>
+        <td>${bookmark.chapter}/${bookmark.chapters || '?'}</td>
         <td>${bookmark.fandom}</td>
         <td>${bookmark.author}</td>
-        <td class="status-cell">${bookmark.status}</td>
+        <td class="status-cell">${findStatus(bookmark)}</td>
         <td>${bookmark.displayDate}</td>
         <td class="options-cell">
             <a href="#" class="change-link">Change status</a>
@@ -61,7 +67,8 @@ function createBookmarkRow(bookmark) {
     `;
 
     const statusCell = tableRow.querySelector('.status-cell');
-    statusCell.innerHTML = `<span class="status-badge ${bookmark.status}">${bookmark.status}</span>`;
+    let statusValue = findStatus(bookmark);
+    statusCell.innerHTML = `<span class="status-badge ${statusValue}">${statusValue}</span>`;
 
     const optionsCell = tableRow.querySelector('.options-cell');
     const deleteLink = optionsCell.querySelector('.delete-link');
@@ -83,6 +90,7 @@ function createBookmarkRow(bookmark) {
         const select = document.createElement('select');
         select.className = 'status-select';
         select.innerHTML = `
+            <option value="Automatic">Automatic</option>
             <option value="Planned">Planned</option>
             <option value="Reading">Reading</option>
             <option value="Completed">Completed</option>
@@ -94,8 +102,9 @@ function createBookmarkRow(bookmark) {
 
         select.addEventListener('change', () => {
             bookmark.status = select.value;
-            statusCell.textContent = bookmark.status;
-            statusCell.innerHTML = `<span class="status-badge ${bookmark.status}">${bookmark.status}</span>`;
+            statusValue = findStatus(bookmark);
+            statusCell.textContent = statusValue;
+            statusCell.innerHTML = `<span class="status-badge ${statusValue}">${statusValue}</span>`;
 
 
             chrome.storage.local.set({ [bookmark.id]: bookmark }).catch(err =>
@@ -110,6 +119,14 @@ function createBookmarkRow(bookmark) {
     tableRow.classList.toggle('table-row');
     return tableRow;
 }
+
+let settings;
+chrome.storage.sync.get().then((result) => {
+    settings = result.settings;
+})
+.catch((error) => {
+    console.error('Failed to load settings from sync storage:', error);
+});
 
 // Normalize and load bookmarks
 chrome.storage.local.get().then((result) => {
@@ -138,12 +155,12 @@ chrome.storage.local.get().then((result) => {
         }
 
         if (!('status' in bookmark)) {
-            bookmark.status = 'Reading';
+            bookmark.status = 'Automatic';
             needToUpdate = true;
         }
 
         if (bookmark.storyName) {
-            bookmark.displayDate = formatDate(bookmark.addTime);
+            bookmark.displayDate = formatDate(bookmark.addTime, settings.dateFormat);
             bookmarkLinks.push(bookmark);
         }
     }
@@ -154,7 +171,7 @@ chrome.storage.local.get().then((result) => {
             .then(() => location.reload())
             .catch(console.error);
     } else {
-        sortBookmarks(bookmarkLinks, 'addTime', 0);
+        sortBookmarks(bookmarkLinks, 'addTime', 1);
         renderBookmarks(bookmarkLinks);
     }
 }).catch((error) => {
@@ -208,14 +225,14 @@ document.querySelector('#import').addEventListener('click', () => {
 document.querySelectorAll('th[data-sort-type]').forEach(header => {
     header.addEventListener('click', () => {
         const sortType = header.getAttribute('data-sort-type');
-        let sortDirection = 0;
+        let sortDirection = 1;
 
         if (header.classList.contains('descending')) {
             header.classList.remove('descending');
-            sortDirection = 0;
+            sortDirection = 1;
         } else {
             header.classList.add('descending');
-            sortDirection = 1;
+            sortDirection = -1;
         }
 
         document.querySelectorAll('th').forEach(h => h.classList.remove('active'));
@@ -233,8 +250,10 @@ document.querySelectorAll('th[data-sort-type]').forEach(header => {
 function filterBookmarks(status) {
     if (status === 'All') {
         renderBookmarks(bookmarkLinks);
+    } else if (status === 'Automatic') {
+        renderBookmarks(bookmarkLinks.filter(b => b.status === 'Automatic'));
     } else {
-        renderBookmarks(bookmarkLinks.filter(b => b.status === status));
+        renderBookmarks(bookmarkLinks.filter(b => findStatus(b) === status));
     }
 }
 
@@ -247,6 +266,10 @@ function setFilterActive(id) {
 document.querySelector('#filter-all').addEventListener('click', () => {
     setFilterActive('filter-all');
     filterBookmarks('All');
+});
+document.querySelector('#filter-automatic').addEventListener('click', () => {
+    setFilterActive('filter-automatic');
+    filterBookmarks('Automatic');
 });
 document.querySelector('#filter-planned').addEventListener('click', () => {
     setFilterActive('filter-planned');
@@ -287,7 +310,7 @@ const hideOrganizerUI = () => {
 // Hide organizer ui if it off
 chrome.storage.sync.get('settings')
     .then(({ settings = {} }) => {
-        if (settings.organizer) return; 
+        if (settings.organizer) return;
 
         hideOrganizerUI();
 

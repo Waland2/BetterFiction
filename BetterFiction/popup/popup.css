@@ -182,3 +182,29 @@ label:hover {
 .checkbox-label *:before,
 .checkbox-label *:after {
 }
+
+
+.select-label {
+    margin: 10px 0;
+    font-size: 15.6px;
+    color: #cdcdcd;
+}
+
+.select-label label {
+    margin-bottom: 4px;
+}
+
+.select-label select {
+    background-color: #1f1f1f;
+    color: #ffffff;
+    border: 1px solid #4a4a4a;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 15px;
+    transition: 0.2s;
+    cursor: pointer;
+}
+
+.select-label select:hover {
+    border-color: #741bfb;
+}

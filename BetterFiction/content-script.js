@@ -55,24 +55,22 @@ const shortcuts = (info) => {
         return;
     }
 
-    const makeIcon = (name, icon, link, addStyle='') => {
+    const makeIcon = (name, icon, link, addStyle = '') => {
         topMenu.appendChild(Object.assign(document.createElement('span'), {
             innerHTML:
                 `<a href='${link}' target="_blank" style='position: relative; cursor: default; display: inline-block; margin-left: 10px;'>
                     <img src="${icon}" style="vertical-align: middle; ${addStyle}" width="24" height="24" title="${name}" alt="${name}">
                 </a>`
         }));
-    }
+    };
 
     if (info.bookmarks) {
-        makeIcon('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -2px 0px rgba(255,255,255,1));')
+        makeIcon('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -1px 0px rgba(255,255,255,1));')
     }
 
     if (info.shortcuts) {
-        const favsIcon = icon('m12 21-6-6c-9-8 4-12 6-7 2-5 15-1 6 7z', '#fff', '#333298');
-        makeIcon('Favorites', favsIcon, 'https://www.fanfiction.net/favorites/story.php');
-        const alertsIcon = icon('M7 4h2l3 1 10-1 1 1v14H1V5zM3 6v11h8V7C9 6 5 6 3 7m10-1v11h8V6zm7-6q1 8-1 11s-3 4-5 5q-1-9 1-11', '#fff', 'none');
-        makeIcon('Alerts', alertsIcon, 'https://www.fanfiction.net/alert/story.php');
+        makeIcon('Favorites', icon('m12 21-7-7C-6 4 10 0 12 6c2-6 18-1 7 8z', '#fff', '#333298'), 'https://www.fanfiction.net/favorites/story.php');
+        makeIcon('Alerts', icon('M7 4h2l3 1 10-1 1 1v14H1V5zM3 6v11h8V7C9 6 5 6 3 7m10-1v11h8V6zm7-6q1 8-1 11s-3 4-5 5q-1-9 1-11', '#fff', 'none'), 'https://www.fanfiction.net/alert/story.php');
     }
 };
 
@@ -112,7 +110,7 @@ const profileSorts = (info) => {
                     className: 'gray',
                     onclick: () => {
                         const sorted = Array.from(placeElem.querySelectorAll(`.${storyType}`)).sort((a, b) => {
-                            const get = (s) => Number(s.querySelector(`.${meta}value`)?.innerText.replaceAll(',', '')) || 0;
+                            const get = (s) => Number(s.querySelector(`.${meta.toLowerCase()}value`)?.innerText.replaceAll(',', '')) || 0;
                             return get(b) - get(a);
                         });
                         placeElem.querySelectorAll(`.${storyType}`).forEach((element) => element.remove());
@@ -155,7 +153,7 @@ const groupDescription = (info, description) => {
             ratedSpanValue.innerHTML = 'Rated: ' + ratedSpanValue.innerHTML.replace('Fiction ', '');
         }
     }
-}
+};
 
 const storyContrast = document.querySelector('[title=\'Story Contrast\']');
 const styleDescription = (info, description) => {
@@ -186,7 +184,7 @@ const styleDescription = (info, description) => {
             storyContrast.onclick = colorDescription;
         }
     }
-}
+};
 
 const betterDescription = (info, element) => {
     const description = element.querySelector('.xgray');
@@ -234,15 +232,15 @@ const betterDescription = (info, element) => {
     styleDescription(info, description);
 };
 
-const colorBookmark = (info, chapters, chapter) => {
-    let color = '#237804';
-    if (info.colorBookmarks && chapter !== chapters) {
-        if (chapter === 1) {
+const colorBookmark = (info, dir, id, chapters, chapter) => {
+    let color = '#096dd9';
+    if (info.organizer) {
+        if (dir[id]?.status === 'Completed' || (dir[id]?.status === 'Automatic' && chapter === chapters)) {
+            color = '#237804';
+        } else if (dir[id]?.status === 'Planned' || (dir[id]?.status === 'Automatic' && chapter === 1)) {
             color = '#d48806';
-        } else if (chapter < chapters) {
-            color = '#096dd9';
-        } else {
-            icon += '#a8071a';
+        } else if (dir[id]?.status === 'Dropped') {
+            color = '#a8071a';
         }
     }
     return bookmarkIcon(color);
@@ -252,8 +250,14 @@ const markBookmark = (info, element, dir, chapters) => {
     if (info.markBookmarks) {
         const id = element.querySelector('a')?.href.match(/fanfiction\.net\/s\/(\d+)/)?.[1];
         if (id && dir[id]?.chapter) {
+            if (dir[id].chapters !== chapters) {
+                const bookmarkInfo = dir[id];
+                bookmarkInfo.chapters = chapters;
+                bookmarkInfo.message = 'set-bookmark';
+                sendMessage(bookmarkInfo);
+            }
             element.style.backgroundColor = '#e1edff';
-            const src = colorBookmark(info, chapters, dir[id].chapter);
+            const src = colorBookmark(info, dir, id, chapters, dir[id].chapter);
             element.querySelector('div')?.before(Object.assign(document.createElement('img'), {
                 src,
                 width: 24,
@@ -282,112 +286,116 @@ const wordCounter = (info, chapSelects, storyTexts) => {
 };
 
 const bookmarks = (info, dir, id, chapters, chapter, follow) => {
-    if (!info.bookmarks || chapter < 1 || chapter > chapters) {
-        return '';
-    }
+    if (info.bookmarks) {
+        const iconUnmarked = `<img src="${bookmarkIcon('none')}" width="24" height="24">`;
+        const preStoryLinks = document.querySelector('#pre_story_links')?.querySelectorAll('a');
+        const fandom = preStoryLinks?.[1]?.innerText || preStoryLinks?.[0]?.innerText || '';
+        const author = document.querySelector('#profile_top a')?.innerText || '';
+        const storyName = document.querySelectorAll('b')?.[5]?.innerText || '';
 
-    const iconUnmarked = `<img src="${bookmarkIcon('none')}" width="24" height="24">`;
-    const iconMarked = `<img src="${colorBookmark(info, chapters, chapter)}" width="24" height="24">`;
-    const preStoryLinks = document.querySelector('#pre_story_links')?.querySelectorAll('a');
-    const fandom = preStoryLinks?.[1]?.innerText || preStoryLinks?.[0]?.innerText || '';
-    const author = document.querySelector('#profile_top a')?.innerText || '';
-    const storyName = document.querySelectorAll('b')?.[5]?.innerText || '';
-
-    let go = document.querySelector('#gobutton');
-    if (!go) {
-        go = Object.assign(document.createElement('button'), {
-            id: 'gobutton',
-            type: 'button',
-            className: 'btn pull-right',
-            textContent: 'Go to bookmark',
-            style: `margin-right: 5px; display: ${(info.bookmarks && dir[id]?.chapter) ? '' : 'none'}`,
-            onclick: () => {
-                const markedChapter = document.querySelector(`#storytext${dir[id].chapter}`);
-                if (markedChapter) {
-                    markedChapter.scrollIntoView({
-                        behavior: 'smooth'
-                    });
-                } else {
-                    window.open(`https://www.fanfiction.net/s/${id}/${dir[id].chapter}`, '_self');
+        let go = document.querySelector('#gobutton');
+        if (!go) {
+            go = Object.assign(document.createElement('button'), {
+                id: 'gobutton',
+                type: 'button',
+                className: 'btn pull-right',
+                textContent: 'Go to bookmark',
+                style: `margin-right: 5px; display: ${dir[id]?.chapter ? '' : 'none'}`,
+                onclick: () => {
+                    const markedChapter = document.querySelector(`#storytext${dir[id].chapter}`);
+                    if (markedChapter) {
+                        markedChapter.scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    } else {
+                        window.open(`https://www.fanfiction.net/s/${id}/${dir[id].chapter}`, '_self');
+                    }
                 }
-            }
-        });
-        follow.after(go);
-    }
-
-    const button = Object.assign(document.createElement('button'), {
-        type: 'button',
-        className: 'btn pull-right bookmark',
-        title: 'bookmark',
-        innerHTML: dir[id]?.chapter === chapter ? iconMarked : iconUnmarked,
-        id: `bookmark${chapter}`,
-        style: 'height: 30px;'
-    });
-    button.onclick = () => {
-        if (dir[id]?.chapter === chapter) {
-            button.innerHTML = iconUnmarked;
-            go.style.display = 'none';
-            document.querySelector('#organizer-status-selecter').style.display = 'none';
-
-            delete dir[id];
-            sendMessage({
-                message: 'del-bookmark',
-                id
             });
-        } else {
-            const lastBookmark = document.querySelector(`#bookmark${dir[id]?.chapter || 0}`)
-            if (lastBookmark) {
-                lastBookmark.click();
-            }
-            button.innerHTML = iconMarked;
-            go.style.display = '';
-            document.querySelector('#organizer-status-selecter').style.display = '';
-            const bookmarkInfo = {
-                chapter,
-                id,
-                fandom,
-                author,
-                storyName
-            }
-            dir[id] = bookmarkInfo;
-            bookmarkInfo.message = 'set-bookmark';
-            sendMessage(bookmarkInfo);
+            follow.after(go);
         }
-    };
-    return button;
+
+        const button = Object.assign(document.createElement('button'), {
+            type: 'button',
+            className: 'btn pull-right bookmark',
+            title: 'bookmark',
+            innerHTML: dir[id]?.chapter === chapter ? `<img src="${colorBookmark(info, dir, id, chapters, chapter)}" width="24" height="24">` : iconUnmarked,
+            id: `bookmark${chapter}`,
+            style: 'height: 30px;'
+        });
+        button.onclick = () => {
+            if (dir[id]?.chapter === chapter) {
+                button.innerHTML = iconUnmarked;
+                go.style.display = 'none';
+                document.querySelector('#organizer-status-selecter').style.display = 'none';
+
+                delete dir[id];
+                sendMessage({
+                    message: 'del-bookmark',
+                    id
+                });
+            } else {
+                const lastBookmark = document.querySelector(`#bookmark${dir[id]?.chapter || 0}`)
+                let status = dir[id]?.status || 'Automatic';
+                if (lastBookmark) {
+                    lastBookmark.click();
+                }
+                const bookmarkInfo = {
+                    chapter,
+                    chapters,
+                    id,
+                    fandom,
+                    author,
+                    storyName,
+                    addTime: new Date().toISOString(),
+                    status
+                };
+                dir[id] = bookmarkInfo;
+                button.innerHTML = `<img src="${colorBookmark(info, dir, id, chapters, chapter)}" width="24" height="24">`;
+                go.style.display = '';
+                document.querySelector('#organizer-status-selecter').style.display = '';
+                bookmarkInfo.message = 'set-bookmark';
+                sendMessage(bookmarkInfo);
+            }
+        };
+        return button;
+    }
+    return '';
 };
 
-const organizer = (dir, id) => {
-    if (!id) return '';
-    if (!dir[id]) dir[id] = { id };
-    const STATUSES = ['Planned', 'Reading', 'Completed', 'Dropped'];
-    const current = STATUSES.includes(dir[id].status) ? dir[id].status : 'Reading';
+const organizer = (info, dir, id) => {
+    if (info.organizer && id) {
+        if (!dir[id]) dir[id] = { id };
+        const STATUSES = ['Automatic', 'Planned', 'Reading', 'Completed', 'Dropped'];
+        const current = STATUSES.includes(dir[id].status) ? dir[id].status : 'Automatic';
 
-    const wrap = document.createElement('span');
-    wrap.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-inline:8px;';
-    if (!dir[id]?.status) wrap.style.display = 'none';
-    wrap.id = 'organizer-status-selecter';
-    wrap.classList = 'pull-right';
+        const wrap = document.createElement('span');
+        wrap.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-inline:8px;';
+        if (!dir[id]?.status) wrap.style.display = 'none';
+        wrap.id = 'organizer-status-selecter';
+        wrap.classList = 'pull-right';
 
-    wrap.innerHTML = `
-        <span class="xcontrast_txt" style="font-size:12px;color:#4b5563;">Status:</span>
-        <select aria-label="Change reading status"
-            style="height:30px;padding:2px 6px;font-size:12px;line-height:20px;
-                   border:1px solid #d1d5db;border-radius:6px;background:#fff;">
-            ${STATUSES.map(
-        (s) => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`
-    ).join('')}
-        </select>
-    `;
+        wrap.innerHTML = `
+            <span class="xcontrast_txt" style="font-size:12px;color:#4b5563;">Status:</span>
+            <select aria-label="Change reading status"
+                style="height:30px;padding:2px 6px;font-size:12px;line-height:20px;
+                       border:1px solid #d1d5db;border-radius:6px;background:#fff;">
+                ${STATUSES.map(
+            (s) => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`
+        ).join('')}
+            </select>
+        `;
 
-    const select = wrap.querySelector('select');
-    select.addEventListener('change', () => {
-        const next = select.value;
-        dir[id].status = next;
-        sendMessage({ message: 'set-status', id, status: next });
-    });
+        const select = wrap.querySelector('select');
+        select.addEventListener('change', () => {
+            const next = select.value;
+            dir[id].status = next;
+            sendMessage({ message: 'set-status', id, status: next });
+        });
 
-    return wrap;
+        return wrap;
+    }
+    return '';
 };
 
 
@@ -408,11 +416,9 @@ const story = (info, dir, id, chapters, chapSelects, storyTexts, follow, isEntir
             innerHTML: (isEntireWork ? '<br>' + `<h4 style='user-select: text'>${chapterTitle}</h4>` + '<hr size="1" noshade style="background: #e2e2e2; height: 1px;">' : '<br>' + `<h4 style='user-select: text; height: 15px'> </h4>` + '<hr size="1" noshade style="background: #e2e2e2; height: 1px;">')
         });
 
-        span.querySelector('h4').after(bookmarks(info, dir, id, chapters, chapter, follow));
+        if (chapter <= chapters) span.querySelector('h4').after(bookmarks(info, dir, id, chapters, chapter, follow));
 
-        if (info.organizer) {
-            if (!document.querySelector("#organizer-status-selecter")) follow.after(organizer(dir, id));
-        }
+        if (!document.querySelector("#organizer-status-selecter")) chapSelects[0].after(organizer(info, dir, id));
         return span;
     };
 
@@ -480,18 +486,17 @@ const entireWork = (info, dir, id, chapters, chapSelects, storyTexts, follow) =>
                         break;
                     }
                     story(info, dir, id, chapters, chapSelects, storyTexts, follow, true);
+                    storyContrast.click();
+                    storyContrast.click();
                 }
             };
-
             finalSeparator.querySelector('hr').after(loadMore);
             loadMore.click();
         };
-        storyContrast.click();
-        storyContrast.click();
         follow.after(button);
 
     }
-}
+};
 
 const main = async () => {
     const info = await sendMessage({
@@ -532,12 +537,22 @@ const main = async () => {
             storyTexts[0].parentElement.id = 'storytext';
             const follow = document.querySelector('.icon-heart');
 
+            if (dir[id] && dir[id].chapters !== chapters) {
+                const bookmarkInfo = dir[id];
+                bookmarkInfo.chapters = chapters;
+                bookmarkInfo.message = 'set-bookmark';
+                sendMessage(bookmarkInfo);
+            }
+
             story(info, dir, id, chapters, chapSelects, storyTexts, follow);
             entireWork(info, dir, id, chapters, chapSelects, storyTexts, follow);
 
             if (info.bookmarks && info.autoSave && (dir[id]?.chapter || 0) < chapter) {
                 document.querySelector(`#bookmark${chapter}`).click();
             }
+
+            storyContrast.click();
+            storyContrast.click();
         }
     } catch (e) {
         console.log("content-script.js did not run correctly, ", e);
