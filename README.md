@@ -21,8 +21,8 @@ A browser extension that improves your FanFiction.net experience with bookmarks,
 * Adblock.
 
 ## Screenshots
-<img src="./archive/screenshots/1.png" alt="Story page">
-<img src="./archive/screenshots/2.png" alt="List page">
-<img src="./archive/screenshots/3.png" alt="Bookmarks page">
-<img src="./archive/screenshots/4.png" alt="Popup settings">
-<img src="./archive/screenshots/5.png" alt="Settings page">
+<img src="./screenshots/1.png" alt="Story page">
+<img src="./screenshots/2.png" alt="List page">
+<img src="./screenshots/3.png" alt="Bookmarks page">
+<img src="./screenshots/4.png" alt="Popup settings">
+<img src="./screenshots/5.png" alt="Settings page">
