@@ -1,558 +1,383 @@
-const METATYPES = { // [sortOrder, fontWeight, color]
-    fandom: [0, '600', null],
-    rated: [1, null, 'rgb(8, 131, 131)'],
-    language: [2, null, {
-        English: 'rgb(151, 0, 0)',
-        Spanish: 'rgb(171, 143, 0)',
-        default: 'rgb(0, 0, 255)'
-    }],
-    genre: [3, null, 'rgb(144, 48, 0)'],
-    chapters: [4, null, 'rgb(0, 0, 0)'],
-    words: [5, null, 'rgb(0, 0, 0)'],
-    staff: [3, null, 'rgb(0, 0, 0)'],
-    archive: [4, null, 'rgb(0, 0, 0)'],
-    followers: [5, null, 'rgb(0, 0, 0)'],
-    topics: [4, null, 'rgb(0, 0, 0)'],
-    posts: [5, null, 'rgb(0, 0, 0)'],
-    reviews: [6, null, 'rgb(0, 0, 0)'],
-    favs: [7, null, 'rgb(0, 0, 0)'],
-    follows: [8, null, 'rgb(0, 0, 0)'],
-    updated: [9, null, null],
-    published: [10, null, null],
-    since: [9, null, null],
-    founder: [10, null, null],
-    admin: [10, null, null],
-    characters: [12, null, null],
-    status: [13, '600', 'rgb(0, 99, 31)'],
-    id: [14, null, null],
+const METATYPES = {
+    fandom: [0, '600', null], rated: [1, null, 'rgb(8, 131, 131)'],
+    language: [2, null, { English: 'rgb(151, 0, 0)', Spanish: 'rgb(171, 143, 0)', default: 'rgb(0, 0, 255)' }],
+    genre: [3, null, 'rgb(144, 48, 0)'], chapters: [4, null, 'rgb(0, 0, 0)'], words: [5, null, 'rgb(0, 0, 0)'],
+    staff: [3, null, 'rgb(0, 0, 0)'], archive: [4, null, 'rgb(0, 0, 0)'], followers: [5, null, 'rgb(0, 0, 0)'],
+    topics: [4, null, 'rgb(0, 0, 0)'], posts: [5, null, 'rgb(0, 0, 0)'],
+    reviews: [6, null, 'rgb(0, 0, 0)'], favs: [7, null, 'rgb(0, 0, 0)'], follows: [8, null, 'rgb(0, 0, 0)'],
+    updated: [9, null, null], published: [10, null, null],
+    since: [9, null, null], founder: [10, null, null], admin: [10, null, null],
+    characters: [12, null, null], status: [13, '600', 'rgb(0, 99, 31)'], id: [14, null, null],
 };
 
-const sendMessage = (payload) => {
-    return chrome.runtime.sendMessage(payload).then(response => response.result).catch(() => ({}));
-};
+const GENRES = 'AdventureAngstCrimeDramaFamilyFantasyFriendshipGeneralHorrorHumorHurt/ComfortMysteryParodyPoetryRomanceSci-FiSpiritualSupernaturalSuspenseTragedyWestern';
+const STATUSES = ['Automatic', 'Planned', 'Reading', 'Completed', 'Dropped'];
+const STORY_PAIRS = [['st', 'mystories', 0], ['fs', 'favstories', 1]];
+const META_GROUPS = [['fandom'], ['genre', 'language'], ['words', 'posts', 'followers'], ['follows', 'favs', 'reviews'], ['published'], ['status', 'characters']];
+const METATYPES_KEYS = Object.keys(METATYPES);
+const METATYPES_ENTRIES = Object.entries(METATYPES);
+const wordSuffix = / - Words: \d+$/;
 
-const adblock = (info) => {
-    if (info.adblock) {
-        document.querySelectorAll('.adsbygoogle').forEach((element) => element.remove());
+const qs = (sel, root = document) => root.querySelector(sel);
+const qsa = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const toNum = (v, d = 0) => Number(String(v).replaceAll(',', '')) || d;
+const mkEl = (tag, props) => Object.assign(document.createElement(tag), props);
+const sendMsg = p => chrome.runtime.sendMessage(p).then(r => r.result).catch(() => ({}));
+const icon = (d, f, s) => 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg"><path d="${d}" fill="${f}" stroke="${s}" stroke-width="2"/></svg>`);
+const bookmarkIcon = c => icon('m6 4v16l6-2 6 2V4z', c, '#333298');
+const storyContrast = qs('[title=\'Story Contrast\']');
+const repaint = () => { storyContrast?.click?.(); storyContrast?.click?.(); };
+
+const betterDescription = (info, el) => {
+    const desc = qs('.xgray', el);
+    if (!desc) return;
+    const ph = '{[@p]}';
+    const [fandom, ...rest] = desc.innerHTML.split(' - Rated: ');
+    if (rest.length) {
+        desc.innerHTML = (fandom.startsWith('Crossover - ') ? fandom.slice(11) : fandom).replaceAll(' - ', ph).replace(/^/, 'Fandom: ') + ' - Rated: ' + rest.join(' - Rated: ');
     }
-};
-
-const copy = (info) => {
-    if (info.copy) {
-        document.querySelectorAll('p').forEach((element) => {
-            element.style.userSelect = 'text';
-            element.style.webkitUserSelect = 'text'; // for Safari
-        });
-    }
-};
-
-const icon = (d, fillColor, strokeColor) => 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg"><path d="${d}" fill="${fillColor}" stroke="${strokeColor}" stroke-width="2"/></svg>`);
-const bookmarkIcon = (color) => icon('m6 4v16l6-2 6 2V4z', color, '#333298');
-
-const shortcuts = (info) => {
-    const topMenu = document.querySelector('div')?.querySelector('div');
-    if (!topMenu) {
-        return;
-    }
-
-    const makeIcon = (name, icon, link, addStyle = '') => {
-        topMenu.appendChild(Object.assign(document.createElement('span'), {
-            innerHTML:
-                `<a href='${link}' target="_blank" style='position: relative; cursor: default; display: inline-block; margin-left: 10px;'>
-                    <img src="${icon}" style="vertical-align: middle; ${addStyle}" width="24" height="24" title="${name}" alt="${name}">
-                </a>`
-        }));
-    };
-
-    if (info.bookmarks) {
-        makeIcon('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -1px 0px rgba(255,255,255,1));')
-    }
-
-    if (info.shortcuts) {
-        makeIcon('Favorites', icon('m12 21-7-7C-6 4 10 0 12 6c2-6 18-1 7 8z', '#fff', '#333298'), 'https://www.fanfiction.net/favorites/story.php');
-        makeIcon('Alerts', icon('M7 4h2l3 1 10-1 1 1v14H1V5zM3 6v11h8V7C9 6 5 6 3 7m10-1v11h8V6zm7-6q1 8-1 11s-3 4-5 5q-1-9 1-11', '#fff', 'none'), 'https://www.fanfiction.net/alert/story.php');
-    }
-};
-
-
-const separateFics = (info, element) => {
-    if (info.separateFics) {
-        element.style.marginBottom = '10px';
-        element.style.borderBottom = '1px solid #969696';
-        element.style.borderTop = '1px solid #969696';
-        element.style.borderRight = '1px solid #969696';
-    }
-};
-
-const bigCover = (info, element) => {
-    if (info.bigCovers) {
-        element.style.height = '115px';
-        const img = element.querySelector('.cimage');
-        if (img) {
-            img.style.width = '75px';
-            img.style.height = '100px';
-        }
-    }
-};
-
-const profileSorts = (info) => {
-    if (info.profileSorts) {
-        [['st', 'mystories', 0], ['fs', 'favstories', 1]].forEach(([place, storyType, sortType]) => {
-            const placeElem = document.querySelector(`#${place}`);
-            const sort = document.querySelector(`[onclick="stories_init(${place}_array,'.${storyType}');${place}_array.sort(sortByReviews); storylist_draw('${place}_inside', ${place}_array, 1, 1, ${sortType});"]`);
-            if (!sort || !placeElem) {
-                return;
-            }
-            const storyContainer = document.querySelector(`#${place}_inside`);
-            ['Follows', 'Favs'].forEach((meta) => {
-                sort.before(Object.assign(document.createElement('span'), {
-                    innerHTML: meta,
-                    className: 'gray',
-                    onclick: () => {
-                        const sorted = Array.from(placeElem.querySelectorAll(`.${storyType}`)).sort((a, b) => {
-                            const get = (s) => Number(s.querySelector(`.${meta.toLowerCase()}value`)?.innerText.replaceAll(',', '')) || 0;
-                            return get(b) - get(a);
-                        });
-                        placeElem.querySelectorAll(`.${storyType}`).forEach((element) => element.remove());
-                        sorted.forEach((element) => storyContainer.appendChild(element));
-                    }
-                }), document.createTextNode(' . '));
-            });
-        });
-    }
-};
-
-const groupDescription = (info, description) => {
-    if (info.groupDescriptions) {
-        description.style.display = 'flow-root';
-        description.style.paddingLeft = '0';
-
-        description.innerHTML = Array.from(description.children).sort((a, b) => {
-            const getIndex = (span) => METATYPES[span.className.substring(0, span.className.indexOf('meta'))]?.[0];
-            return getIndex(a) - getIndex(b);
-        }).map((span) => span.outerHTML).join(" - ");
-
-        [['fandom'], ['genre', 'language'], ['words', 'posts', 'followers'], ['follows', 'favs', 'reviews'], ['published'], ['status', 'characters']].forEach((item) => {
-            const getSpan = (meta) => description.querySelector(`:scope > .${meta}meta`);
-            const meta = item.find(getSpan);
-            getSpan(meta)?.after(document.createElement('br'));
-        });
-
-        description.innerHTML = description.innerHTML.replace(/<br> - /g, '<br>');
-
-        const idSpan = description.querySelector('.idmeta');
-        if (idSpan) idSpan.style.display = 'none';
-
-        const statusSpan = description.querySelector('.statusmeta');
-        if (statusSpan) statusSpan.innerHTML = statusSpan.innerHTML.replace('Status: ', '');
-
-        const ratedSpan = description.querySelector('.ratedmeta');
-        if (ratedSpan) {
-            ratedSpan.innerHTML = ratedSpan.innerHTML.replace('Rated: ', '');
-            const ratedSpanValue = description.querySelector('.ratedvalue');
-            ratedSpanValue.innerHTML = 'Rated: ' + ratedSpanValue.innerHTML.replace('Fiction ', '');
-        }
-    }
-};
-
-const storyContrast = document.querySelector('[title=\'Story Contrast\']');
-const styleDescription = (info, description) => {
-    if (info.styleDescriptions) {
-        const colorDescription = () => Object.entries(METATYPES).forEach(([meta, [sortOrder, fontWeight, color]]) => {
-            const metaSpan = description.querySelector(`.${meta}meta`);
-            const valueSpan = metaSpan?.querySelector(`.${meta}value`) || metaSpan;
-            const spans = valueSpan ? [valueSpan].concat(Array.from(valueSpan.querySelectorAll('*'))) : [];
-            spans.forEach((span) => {
-                if (fontWeight) span.style.fontWeight = fontWeight;
-                let trueColor = color?.[span.innerText] || color;
-                if (trueColor) {
-                    if (storyContrast?.parentElement?.style.backgroundColor === 'rgb(51, 51, 51)') {
-                        const rgb = trueColor.match(/\d+/g);
-                        if (rgb) {
-                            const [r, g, b] = trueColor.match(/\d+/g).map(Number);
-                            trueColor = `rgb(${255 - r}, ${255 - g}, ${255 - b})`;
-                        }
-                    }
-                    span.style.color = trueColor;
-                }
-            });
-        });
-
-        colorDescription();
-
-        if (storyContrast) {
-            storyContrast.onclick = colorDescription;
-        }
-    }
-};
-
-const betterDescription = (info, element) => {
-    const description = element.querySelector('.xgray');
-    if (!description) {
-        return;
-    }
-
-    const placeholder = '{[@p]}';
-    const splitByRated = description.innerHTML.split(' - Rated: ');
-
-    if (splitByRated.length > 1) { // TBU
-        if (splitByRated[0].startsWith('Crossover - ')) {
-            splitByRated[0] = splitByRated[0].substring(11);
-        }
-        splitByRated[0] = 'Fandom: ' + splitByRated[0].replaceAll(' - ', placeholder);
-        description.innerHTML = splitByRated.join(' - Rated: ');
-    }
-
-    description.innerHTML = (description.innerHTML).split(' - ').map((item) => `<span>${item}</span>`).join(' - ').replaceAll(placeholder, ' - ');
-
-    const metaSpans = description.querySelectorAll('span');
-    metaSpans.forEach((span) => {
-        const meta = Object.keys(METATYPES).find((meta) => (span.innerText === 'Complete' && meta === 'status') || span.innerText.toLowerCase().startsWith(meta + ': '));
-        if (meta) span.classList.add(meta + 'meta');
-    });
-
+    desc.innerHTML = desc.innerHTML.split(' - ').map(item => `<span>${item}</span>`).join(' - ').replaceAll(ph, ' - ');
     let notDone = ['language', 'genre', 'characters'];
-    const allGenres = 'AdventureAngstCrimeDramaFamilyFantasyFriendshipGeneralHorrorHumorHurt/ComfortMysteryParodyPoetryRomanceSci-FiSpiritualSupernaturalSuspenseTragedyWestern';
-    description.querySelectorAll(':not([class])').forEach((span) => {
-        if (notDone[0] === 'genre' && !span.innerText.split('/').every((genre) => allGenres.includes(genre))) notDone.shift();
-        span.className = (notDone.shift() || 'characters') + 'meta';
-    });
-
-    Object.keys(METATYPES).forEach((meta) => {
-        const span = description.querySelector(`.${meta}meta`);
-        const start = meta + ': ';
-        if (span?.innerHTML.toLowerCase().startsWith(start)) {
-            span.innerHTML = `${span.innerHTML.substring(0, start.length)}<span class='${meta}value'>${span.innerHTML.substring(start.length)}</span>`;
-        }
-    });
-
-    element.style.height = 'auto';
-    element.style.minHeight = '120px';
-    groupDescription(info, description);
-    styleDescription(info, description);
-};
-
-const colorBookmark = (info, dir, id, chapters, chapter) => {
-    let color = '#096dd9';
-    if (info.organizer) {
-        if (dir[id]?.status === 'Completed' || (dir[id]?.status === 'Automatic' && chapter === chapters)) {
-            color = '#237804';
-        } else if (dir[id]?.status === 'Planned' || (dir[id]?.status === 'Automatic' && chapter === 1)) {
-            color = '#d48806';
-        } else if (dir[id]?.status === 'Dropped') {
-            color = '#a8071a';
-        }
-    }
-    return bookmarkIcon(color);
-};
-
-const markBookmark = (info, element, dir, chapters) => {
-    if (info.markBookmarks) {
-        const id = element.querySelector('a')?.href.match(/fanfiction\.net\/s\/(\d+)/)?.[1];
-        if (id && dir[id]?.chapter) {
-            if (dir[id].chapters !== chapters) {
-                const bookmarkInfo = dir[id];
-                bookmarkInfo.chapters = chapters;
-                bookmarkInfo.message = 'set-bookmark';
-                sendMessage(bookmarkInfo);
+    qsa('span', desc).forEach(span => {
+        let meta = span.innerText.toLowerCase().split(': ')[0];
+        if (span.innerText === 'Complete') meta = 'status';
+        if (METATYPES_KEYS.includes(meta)) {
+            span.classList.add(meta + 'meta');
+            const start = meta + ': ';
+            if (span.innerHTML.toLowerCase().startsWith(start)) {
+                span.innerHTML = `${span.innerHTML.substring(0, start.length)}<span class='${meta}value'>${span.innerHTML.substring(start.length)}</span>`;
             }
-            element.style.backgroundColor = '#e1edff';
-            const src = colorBookmark(info, dir, id, chapters, dir[id].chapter);
-            element.querySelector('div')?.before(Object.assign(document.createElement('img'), {
-                src,
-                width: 24,
-                height: 24
-            }));
+        } else {
+            if (notDone[0] === 'genre' && !span.innerText.split('/').every(g => GENRES.includes(g))) notDone.shift();
+            span.className = (notDone.shift() || 'characters') + 'meta';
         }
-    }
-};
+    });
+    el.style.height = 'auto';
+    el.style.minHeight = '120px';
 
-const wordCounter = (info, chapSelects, storyTexts) => {
-    if (info.wordCounter) {
-        storyTexts.forEach((element) => {
-            const chapter = Number(element.id.replace('storytext', ''));
-            if (/ - Words: \d+$/.test(chapSelects[0]?.options[chapter - 1].textContent)) {
-                return;
+    if (info.groupDescriptions) {
+        desc.style.display = 'flow-root';
+        desc.style.paddingLeft = '0';
+        const getMetaKey = el => el.className.substring(0, el.className.indexOf('meta'));
+        desc.innerHTML = Array.from(desc.children)
+            .sort((a, b) => (METATYPES[getMetaKey(a)]?.[0] || 0) - (METATYPES[getMetaKey(b)]?.[0] || 0))
+            .map(s => s.outerHTML)
+            .join(' - ');
+        META_GROUPS.forEach(item => {
+            const meta = item.find(m => qs(`:scope > .${m}meta`, desc));
+            if (meta) {
+                const metaEl = qs(`:scope > .${meta}meta`, desc);
+                metaEl?.after(document.createElement('br'));
             }
-            let wordCounter = 0;
-            element.querySelectorAll('p').forEach((p) => {
-                wordCounter += p.innerText.trim().split(/\s+/).length;
-            });
-            chapSelects.forEach((chapSelect) => {
-                chapSelect.options[chapter - 1].textContent += ` - Words: ${wordCounter}`;
-            });
         });
+        desc.innerHTML = desc.innerHTML.replace(/<br> - /g, '<br>');
+        qs('.idmeta', desc)?.style.setProperty('display', 'none');
+        const status = qs('.statusmeta', desc);
+        if (status) {
+            status.innerHTML = status.innerHTML.replace('Status: ', '');
+        }
+        const rated = qs('.ratedmeta', desc);
+        if (rated) {
+            rated.innerHTML = rated.innerHTML.replace('Rated: ', '');
+            const ratedValue = qs('.ratedvalue', desc);
+            if (ratedValue) {
+                ratedValue.innerHTML = 'Rated: ' + ratedValue.innerHTML.replace('Fiction ', '');
+            }
+        }
     }
-};
 
-const bookmarks = (info, dir, id, chapters, chapter, follow) => {
-    if (info.bookmarks) {
-        const iconUnmarked = `<img src="${bookmarkIcon('none')}" width="24" height="24">`;
-        const preStoryLinks = document.querySelector('#pre_story_links')?.querySelectorAll('a');
-        const fandom = preStoryLinks?.[1]?.innerText || preStoryLinks?.[0]?.innerText || '';
-        const author = document.querySelector('#profile_top a')?.innerText || '';
-        const storyName = document.querySelectorAll('b')?.[5]?.innerText || '';
-
-        let go = document.querySelector('#gobutton');
-        if (!go) {
-            go = Object.assign(document.createElement('button'), {
-                id: 'gobutton',
-                type: 'button',
-                className: 'btn pull-right',
-                textContent: 'Go to bookmark',
-                style: `margin-right: 5px; display: ${dir[id]?.chapter ? '' : 'none'}`,
-                onclick: () => {
-                    const markedChapter = document.querySelector(`#storytext${dir[id].chapter}`);
-                    if (markedChapter) {
-                        markedChapter.scrollIntoView({
-                            behavior: 'smooth'
-                        });
-                    } else {
-                        window.open(`https://www.fanfiction.net/s/${id}/${dir[id].chapter}`, '_self');
+    if (info.styleDescriptions) {
+        const applyColors = () => {
+            const dark = storyContrast?.parentElement?.style.backgroundColor === 'rgb(51, 51, 51)';
+            METATYPES_ENTRIES.forEach(([meta, [, weight, color]]) => {
+                const metaSpan = qs(`.${meta}meta`, desc);
+                const valueSpan = metaSpan ? qs(`.${meta}value`, metaSpan) || metaSpan : metaSpan;
+                const spans = valueSpan ? [valueSpan, ...qsa('*', valueSpan)] : [];
+                spans.forEach(span => {
+                    if (weight) span.style.fontWeight = weight;
+                    let c = color?.[span.innerText] || color;
+                    if (c && dark) {
+                        const [r, g, b] = (c.match(/\d+/g) || []).map(Number);
+                        c = `rgb(${255 - r}, ${255 - g}, ${255 - b})`;
                     }
+                    if (c) span.style.color = c;
+                });
+            });
+        };
+        applyColors();
+        if (storyContrast) storyContrast.onclick = applyColors;
+    }
+};
+
+const getBookmarkColor = (info, dir, id, ch, c) => {
+    const entry = dir[id];
+    if (!info.organizer) return '#096dd9';
+    const status = entry?.status;
+    if (status === 'Completed' || (status === 'Automatic' && c === ch)) return '#237804';
+    if (status === 'Planned' || (status === 'Automatic' && c === 1)) return '#d48806';
+    if (status === 'Dropped') return '#a8071a';
+    return '#096dd9';
+};
+
+const createStory = (info, dir, id, chapters, selects, texts, follow, entire = false) => {
+    if (!id) return;
+    info.copy && qsa('p').forEach(e => { e.style.userSelect = 'text'; e.style.webkitUserSelect = 'text'; });
+    
+    if (info.wordCounter && selects[0]) {
+        texts.forEach(el => {
+            const ch = toNum(el.id.replace('storytext', ''), 0);
+            if (!ch || wordSuffix.test(selects[0].options[ch - 1]?.textContent || '')) return;
+            const wc = qsa('p', el).reduce((sum, p) => sum + p.innerText.trim().split(/\s+/).length, 0);
+            selects.forEach(select => { select.options[ch - 1].textContent += ` - Words: ${wc}`; });
+        });
+    }
+
+    const lastText = texts[texts.length - 1];
+    const baseClass = lastText.className;
+    let orgAdded = false;
+
+    const preLinks = info.bookmarks ? qsa('#pre_story_links a') : [];
+    const fandom = preLinks[1]?.innerText || preLinks[0]?.innerText || '';
+    const author = info.bookmarks ? qs('#profile_top a')?.innerText || '' : '';
+    const name = info.bookmarks ? qsa('b')[5]?.innerText || '' : '';
+    const unmarked = info.bookmarks ? `<img src="${bookmarkIcon('none')}" width="24" height="24">` : '';
+
+    const makeSeparator = (ch) => {
+        const sep = mkEl('span', {
+            className: baseClass, id: `separator${ch}`,
+            innerHTML: entire ? `<br><h4 style='user-select: text'>${selects[0]?.options[ch - 1]?.innerText || ''}</h4><hr size="1" noshade style="background: #e2e2e2; height: 1px;">` : "<br><h4 style='user-select: text; height: 15px'> </h4><hr size=\"1\" noshade style=\"background: #e2e2e2; height: 1px;\">"
+        });
+        if (ch <= chapters && info.bookmarks) {
+            let go = qs('#gobutton');
+            if (!go) {
+                go = mkEl('button', {
+                    id: 'gobutton', type: 'button', className: 'btn pull-right',
+                    textContent: 'Go to bookmark',
+                    style: `margin-right: 5px; display: ${dir[id]?.chapter ? '' : 'none'}`,
+                    onclick: () => {
+                        const mc = qs(`#storytext${dir[id].chapter}`);
+                        mc ? mc.scrollIntoView({ behavior: 'smooth' }) : window.open(`https://www.fanfiction.net/s/${id}/${dir[id].chapter}`, '_self');
+                    }
+                });
+                follow.after(go);
+            }
+
+            const btn = mkEl('button', {
+                type: 'button', className: 'btn pull-right bookmark', title: 'bookmark',
+                innerHTML: dir[id]?.chapter === ch ? `<img src="${bookmarkIcon(getBookmarkColor(info, dir, id, chapters, ch))}" width="24" height="24">` : unmarked,
+                id: `bookmark${ch}`, style: 'height: 30px;',
+                onclick: function() {
+                    const dirEntry = dir[id];
+                    const orgSelector = qs('#organizer-status-selecter');
+                    if (dirEntry?.chapter === ch) {
+                        this.innerHTML = info.bookmarks ? `<img src="${bookmarkIcon('none')}" width="24" height="24">` : '';
+                        go.style.display = 'none';
+                        if (orgSelector) orgSelector.style.display = 'none';
+                        delete dir[id];
+                        sendMsg({ message: 'del-bookmark', id });
+                        return;
+                    }
+                    qs(`#bookmark${dirEntry?.chapter || 0}`)?.click();
+                    const bm = { chapter: ch, chapters, id, fandom, author, storyName: name, addTime: new Date().toISOString(), status: dirEntry?.status || 'Automatic' };
+                    dir[id] = bm;
+                    this.innerHTML = `<img src="${bookmarkIcon(getBookmarkColor(info, dir, id, chapters, ch))}" width="24" height="24">`;
+                    go.style.display = '';
+                    if (orgSelector) orgSelector.style.display = '';
+                    bm.message = 'set-bookmark';
+                    sendMsg(bm);
                 }
             });
-            follow.after(go);
+            qs('h4', sep)?.after(btn);
         }
-
-        const button = Object.assign(document.createElement('button'), {
-            type: 'button',
-            className: 'btn pull-right bookmark',
-            title: 'bookmark',
-            innerHTML: dir[id]?.chapter === chapter ? `<img src="${colorBookmark(info, dir, id, chapters, chapter)}" width="24" height="24">` : iconUnmarked,
-            id: `bookmark${chapter}`,
-            style: 'height: 30px;'
-        });
-        button.onclick = () => {
-            if (dir[id]?.chapter === chapter) {
-                button.innerHTML = iconUnmarked;
-                go.style.display = 'none';
-                document.querySelector('#organizer-status-selecter').style.display = 'none';
-
-                delete dir[id];
-                sendMessage({
-                    message: 'del-bookmark',
-                    id
+        if (!orgAdded && selects[0]) {
+            if (info.organizer && id) {
+                if (!dir[id]) dir[id] = { id };
+                const current = STATUSES.includes(dir[id].status) ? dir[id].status : 'Automatic';
+                const wrap = mkEl('span', {
+                    style: 'display:' + (dir[id]?.status ? 'inline-flex' : 'none') + ';align-items:center;gap:6px;margin-inline:8px;',
+                    id: 'organizer-status-selecter', className: 'pull-right',
+                    innerHTML: info.bookmarks ? `<span class="xcontrast_txt" style="font-size:12px;color:#4b5563;">Status:</span><select aria-label="Change reading status" style="height:30px;padding:2px 6px;font-size:12px;line-height:20px;border:1px solid #d1d5db;border-radius:6px;background:#fff;">${STATUSES.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('')}</select>` : '',
                 });
-            } else {
-                const lastBookmark = document.querySelector(`#bookmark${dir[id]?.chapter || 0}`)
-                let status = dir[id]?.status || 'Automatic';
-                if (lastBookmark) {
-                    lastBookmark.click();
-                }
-                const bookmarkInfo = {
-                    chapter,
-                    chapters,
-                    id,
-                    fandom,
-                    author,
-                    storyName,
-                    addTime: new Date().toISOString(),
-                    status
-                };
-                dir[id] = bookmarkInfo;
-                button.innerHTML = `<img src="${colorBookmark(info, dir, id, chapters, chapter)}" width="24" height="24">`;
-                go.style.display = '';
-                document.querySelector('#organizer-status-selecter').style.display = '';
-                bookmarkInfo.message = 'set-bookmark';
-                sendMessage(bookmarkInfo);
+                qs('select', wrap).addEventListener('change', e => {
+                    dir[id].status = e.target.value;
+                    sendMsg({ message: 'set-status', id, status: e.target.value });
+                });
+                selects[0].after(wrap);
             }
-        };
-        return button;
-    }
-    return '';
-};
-
-const organizer = (info, dir, id) => {
-    if (info.organizer && id) {
-        if (!dir[id]) dir[id] = { id };
-        const STATUSES = ['Automatic', 'Planned', 'Reading', 'Completed', 'Dropped'];
-        const current = STATUSES.includes(dir[id].status) ? dir[id].status : 'Automatic';
-
-        const wrap = document.createElement('span');
-        wrap.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin-inline:8px;';
-        if (!dir[id]?.status) wrap.style.display = 'none';
-        wrap.id = 'organizer-status-selecter';
-        wrap.classList = 'pull-right';
-
-        wrap.innerHTML = `
-            <span class="xcontrast_txt" style="font-size:12px;color:#4b5563;">Status:</span>
-            <select aria-label="Change reading status"
-                style="height:30px;padding:2px 6px;font-size:12px;line-height:20px;
-                       border:1px solid #d1d5db;border-radius:6px;background:#fff;">
-                ${STATUSES.map(
-            (s) => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`
-        ).join('')}
-            </select>
-        `;
-
-        const select = wrap.querySelector('select');
-        select.addEventListener('change', () => {
-            const next = select.value;
-            dir[id].status = next;
-            sendMessage({ message: 'set-status', id, status: next });
-        });
-
-        return wrap;
-    }
-    return '';
-};
-
-
-const story = (info, dir, id, chapters, chapSelects, storyTexts, follow, isEntireWork = false) => {
-    if (!id) {
-        return;
-    }
-
-    copy(info);
-    wordCounter(info, chapSelects, storyTexts);
-
-    const separatorId = (chapter) => `separator${chapter}`;
-    const separator = (chapter) => {
-        const chapterTitle = chapSelects[0]?.options[chapter - 1]?.innerText || '';
-        const span = Object.assign(document.createElement('span'), {
-            className: storyTexts[storyTexts.length - 1].className,
-            id: separatorId(chapter),
-            innerHTML: (isEntireWork ? '<br>' + `<h4 style='user-select: text'>${chapterTitle}</h4>` + '<hr size="1" noshade style="background: #e2e2e2; height: 1px;">' : '<br>' + `<h4 style='user-select: text; height: 15px'> </h4>` + '<hr size="1" noshade style="background: #e2e2e2; height: 1px;">')
-        });
-
-        if (chapter <= chapters) span.querySelector('h4').after(bookmarks(info, dir, id, chapters, chapter, follow));
-
-        if (!document.querySelector("#organizer-status-selecter")) chapSelects[0].after(organizer(info, dir, id));
-        return span;
+            orgAdded = true;
+        }
+        return sep;
     };
 
-    if (!document.querySelector(`#${separatorId(chapters + 1)}`)) {
-        const finalSeparator = separator(chapters + 1);
-        storyTexts[storyTexts.length - 1].after(finalSeparator);
+    if (!qs(`#separator${chapters + 1}`)) {
+        lastText.after(makeSeparator(chapters + 1));
     }
 
-    storyTexts.forEach((element) => {
-        const chapter = Number(element?.id?.replace('storytext', '') || 0);
-        if (chapter && !document.querySelector(`#${separatorId(chapter)}`)) {
-            element.before(separator(chapter));
-        }
+    texts.forEach(el => {
+        const ch = toNum(el?.id?.replace('storytext', ''), 0);
+        if (ch && !qs(`#separator${ch}`)) el.before(makeSeparator(ch));
     });
-};
-
-const entireWork = (info, dir, id, chapters, chapSelects, storyTexts, follow) => {
-    if (info.entireWork && chapSelects[0]) {
-        const button = Object.assign(document.createElement('button'), {
-            type: 'button',
-            className: 'btn pull-right',
-            textContent: 'Entire Work',
-            style: 'margin-right: 5px;'
-        });
-
-        button.onclick = async () => {
-            button.style.display = 'none';
-            button.disabled = true;
-            chapSelects.forEach((element) => {
-                element.parentElement.style.display = 'none';
-            });
-
-            document.querySelector(`#separator${storyTexts[0].id.replace('storytext', '')}`).remove();
-            storyTexts.shift().remove();
-
-            const finalSeparator = document.querySelector(`#separator${chapters + 1}`);
-            let start = 1;
-            const loadMore = Object.assign(document.createElement('button'), {
-                type: 'button',
-                className: 'btn pull-right',
-                textContent: 'Load more chapters',
-            });
-
-            loadMore.onclick = async () => {
-                loadMore.style.display = 'none';
-                for (let chapter = start; chapter <= chapters; chapter++) {
-                    try {
-                        const response = await fetch(`https://www.fanfiction.net/s/${id}/${chapter}`);
-                        if (!response.ok) {
-                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                        }
-                        const chapterHTML = await response.text();
-                        const chapterElem = new DOMParser().parseFromString(chapterHTML, 'text/html').querySelector('#storytext');
-                        if (!chapterElem) {
-                            break;
-                        }
-                        chapterElem.id = `storytext${chapter}`;
-
-                        finalSeparator.before(chapterElem);
-                        storyTexts.push(chapterElem);
-                    } catch (error) {
-                        console.error(`Failed to fetch chapter ${chapter}`, error);
-                        start = chapter;
-                        loadMore.style.display = '';
-                        break;
-                    }
-                    story(info, dir, id, chapters, chapSelects, storyTexts, follow, true);
-                    storyContrast.click();
-                    storyContrast.click();
-                }
-            };
-            finalSeparator.querySelector('hr').after(loadMore);
-            loadMore.click();
-        };
-        follow.after(button);
-
-    }
 };
 
 const main = async () => {
-    const info = await sendMessage({
-        message: 'get-info'
-    });
-
-    const dir = await sendMessage({
-        message: 'get-dir'
-    });
-
+    const [info, dir] = await Promise.all([sendMsg({ message: 'get-info' }), sendMsg({ message: 'get-dir' })]);
     try {
-        adblock(info);
-        shortcuts(info);
-        profileSorts(info);
+        info.adblock && qsa('.adsbygoogle').forEach(e => e.remove());
+        
+        if (info.bookmarks || info.shortcuts) {
+            const topMenu = qs('div div');
+            if (topMenu) {
+                const frag = document.createDocumentFragment();
+                const add = (name, ico, link, style = '') => frag.appendChild(mkEl('span', {
+                    innerHTML: `<a href='${link}' target="_blank" style='position: relative; cursor: default; display: inline-block; margin-left: 10px;'><img src="${ico}" style="vertical-align: middle; ${style}" width="24" height="24" title="${name}" alt="${name}"></a>`
+                }));
+                if (info.bookmarks) add('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -1px 0px rgba(255,255,255,1));');
+                if (info.shortcuts) {
+                    add('Favorites', icon('m12 21-7-7C-6 4 10 0 12 6c2-6 18-1 7 8z', '#fff', '#333298'), 'https://www.fanfiction.net/favorites/story.php');
+                    add('Alerts', icon('M7 4h2l3 1 10-1 1 1v14H1V5zM3 6v11h8V7C9 6 5 6 3 7m10-1v11h8V6zm7-6q1 8-1 11s-3 4-5 5q-1-9 1-11', '#fff', 'none'), 'https://www.fanfiction.net/alert/story.php');
+                }
+                topMenu.appendChild(frag);
+            }
+        }
+
+        if (info.profileSorts) {
+            STORY_PAIRS.forEach(([place, type, sortType]) => {
+                const placeElem = qs(`#${place}`);
+                const reviewsSort = qs(
+                    `[onclick="stories_init(${place}_array,'.${type}');${place}_array.sort(sortByReviews); storylist_draw('${place}_inside', ${place}_array, 1, 1, ${sortType});"]`
+                ) || qs(`#${place} [onclick*="sortByReviews"]`);
+                if (!reviewsSort || !placeElem) return;
+                const container = qs(`#${place}_inside`);
+                ['Follows', 'Favs'].forEach(meta => {
+                    const metaClass = `.${meta.toLowerCase()}value`;
+                    const el = mkEl('span', {
+                        innerHTML: meta,
+                        className: 'gray',
+                        onclick: () => {
+                            const all = qsa(`.${type}`, placeElem);
+                            const indexed = all.map((el, i) => [el, toNum(qs(metaClass, el)?.innerText)]);
+                            const sorted = indexed.slice().sort((a, b) => b[1] - a[1]).map(x => x[0]);
+                            all.forEach(e => e.remove());
+                            sorted.forEach(e => container.appendChild(e));
+                        }
+                    });
+                    reviewsSort.after(document.createTextNode(' . '), el);
+                });
+            });
+        }
 
         let id;
-        let imagesParent = document.querySelectorAll('.z-list');
-        if (!imagesParent.length) imagesParent = document.querySelectorAll('#profile_top');
-        imagesParent.forEach((element) => {
-            bigCover(info, element);
-            betterDescription(info, element);
-            id = document.querySelector('.idvalue')?.innerText.trim() || '';
-            if (!id) separateFics(info, element);
-            const chapters = Number(element.querySelector('.chaptersvalue')?.innerText || 1);
-            markBookmark(info, element, dir, chapters);
+        let parents = qsa('.z-list');
+        if (!parents.length) parents = qsa('#profile_top');
+
+        parents.forEach(el => {
+            if (info.bigCovers) {
+                el.style.height = '115px';
+                const img = qs('.cimage', el);
+                if (img) {
+                    img.style.width = '75px';
+                    img.style.height = '100px';
+                }
+            }
+            betterDescription(info, el);
+            id = qs('.idvalue', el)?.innerText.trim() || '';
+            if (!id && info.separateFics) el.style.cssText = 'margin-bottom: 10px; border: 1px solid #969696; border-left: none;';
+            
+            if (info.markBookmarks) {
+                const storyId = qs('a', el)?.href.match(/fanfiction\.net\/s\/(\d+)/)?.[1];
+                const storyEntry = dir[storyId];
+                const ch = toNum(qs('.chaptersvalue', el)?.innerText, 1);
+                if (storyId && storyEntry?.chapter) {
+                    if (storyEntry.chapters !== ch) {
+                        storyEntry.chapters = ch;
+                        storyEntry.message = 'set-bookmark';
+                        sendMsg(storyEntry);
+                    }
+                    el.style.backgroundColor = '#e1edff';
+                    qs('div', el)?.before(mkEl('img', {
+                        src: bookmarkIcon(getBookmarkColor(info, dir, storyId, ch, storyEntry.chapter)),
+                        width: 24, height: 24
+                    }));
+                }
+            }
         });
 
         if (id) {
-            const chapters = Number(document.querySelector('.chaptersvalue')?.innerText || 1);
-            const chapSelects = document.querySelectorAll('#chap_select');
+            const chapters = toNum(qs('.chaptersvalue')?.innerText, 1);
+            const selects = qsa('#chap_select');
             let chapter = 1;
-            if (chapSelects[0]) {
-                chapSelects[0].parentElement.style.marginTop = '20px';
-                chapter = Number(chapSelects[0].options[chapSelects[0].selectedIndex].innerText.split('.')[0]);
+            if (selects[0]) {
+                selects[0].parentElement.style.marginTop = '20px';
+                chapter = toNum(selects[0].options[selects[0].selectedIndex].innerText.split('.')[0], 1);
             }
-            const storyTexts = Array.from(document.querySelectorAll('#storytext'));
-            storyTexts[0].id = `storytext${chapter}`;
-            storyTexts[0].parentElement.id = 'storytext';
-            const follow = document.querySelector('.icon-heart');
+            const texts = qsa('#storytext');
+            texts[0].id = `storytext${chapter}`;
+            texts[0].parentElement.id = 'storytext';
+            const follow = qs('.icon-heart');
 
-            if (dir[id] && dir[id].chapters !== chapters) {
-                const bookmarkInfo = dir[id];
-                bookmarkInfo.chapters = chapters;
-                bookmarkInfo.message = 'set-bookmark';
-                sendMessage(bookmarkInfo);
-            }
-
-            story(info, dir, id, chapters, chapSelects, storyTexts, follow);
-            entireWork(info, dir, id, chapters, chapSelects, storyTexts, follow);
-
-            if (info.bookmarks && info.autoSave && (dir[id]?.chapter || 0) < chapter) {
-                document.querySelector(`#bookmark${chapter}`).click();
+            const dirEntry = dir[id];
+            if (dirEntry && dirEntry.chapters !== chapters) {
+                dirEntry.chapters = chapters;
+                dirEntry.message = 'set-bookmark';
+                sendMsg(dirEntry);
             }
 
-            storyContrast.click();
-            storyContrast.click();
+            createStory(info, dir, id, chapters, selects, texts, follow);
+            
+            if (info.entireWork && selects[0]) {
+                const btn = mkEl('button', {
+                    type: 'button', className: 'btn pull-right',
+                    textContent: 'Entire Work', style: 'margin-right: 5px;'
+                });
+
+                btn.onclick = async () => {
+                    btn.style.display = 'none';
+                    btn.disabled = true;
+                    selects.forEach(el => { el.parentElement.style.display = 'none'; });
+                    qs(`#separator${texts[0].id.replace('storytext', '')}`).remove();
+                    texts.shift().remove();
+                    const finalSep = qs(`#separator${chapters + 1}`);
+                    let start = 1;
+
+                    const loadMore = mkEl('button', {
+                        type: 'button', className: 'btn pull-right',
+                        textContent: 'Load more chapters',
+                    });
+
+                    loadMore.onclick = async () => {
+                        loadMore.style.display = 'none';
+                        for (let ch = start; ch <= chapters; ch++) {
+                            try {
+                                const response = await fetch(`https://www.fanfiction.net/s/${id}/${ch}`);
+                                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                const parsed = new DOMParser().parseFromString(await response.text(), 'text/html');
+                                const chEl = qs('#storytext', parsed);
+                                if (!chEl) break;
+                                chEl.id = `storytext${ch}`;
+                                finalSep.before(chEl);
+                                texts.push(chEl);
+                            } catch (e) {
+                                console.error(`Failed to fetch chapter ${ch}`, e);
+                                start = ch;
+                                loadMore.style.display = '';
+                                break;
+                            }
+                            createStory(info, dir, id, chapters, selects, texts, follow, true);
+                            repaint();
+                        }
+                    };
+                    qs('hr', finalSep)?.after(loadMore);
+                    loadMore.click();
+                };
+
+                follow.after(btn);
+            }
+
+            if (info.bookmarks && info.autoSave && (dirEntry?.chapter || 0) < chapter) {
+                qs(`#bookmark${chapter}`)?.click();
+            }
+
+            repaint();
         }
     } catch (e) {
         console.log("content-script.js did not run correctly, ", e);
