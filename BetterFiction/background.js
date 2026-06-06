@@ -48,6 +48,8 @@ const legacyMap = {
     allowCopy: 'copy',
     allFicButton: 'entireWork',
 };
+const legacyMapKeys = Object.keys(legacyMap);
+const allFunctions = [...primaryFunctions, ...secondaryFunctions];
 
 chrome.runtime.onInstalled.addListener((details) => {
     const defaultSettings = {};
@@ -58,20 +60,20 @@ chrome.runtime.onInstalled.addListener((details) => {
         .then((result) => {
             const settings = result.settings;
             if (settings) {
-                [...primaryFunctions, ...secondaryFunctions].forEach(setting => {
+                for (let i = 0; i < allFunctions.length; i++) {
+                    const setting = allFunctions[i];
                     if (settings[setting] !== undefined) {
                         defaultSettings[setting] = settings[setting];
                     }
-                });
-            }
-
-            // compatibility with old version settings
-            Object.keys(legacyMap).forEach(oldKey => {
-                if (settings && settings[oldKey] !== undefined) {
-                    const newKey = legacyMap[oldKey];
-                    defaultSettings[newKey] = settings[oldKey];
                 }
-            });
+                // compatibility with old version settings
+                for (let i = 0; i < legacyMapKeys.length; i++) {
+                    const oldKey = legacyMapKeys[i];
+                    if (settings[oldKey] !== undefined) {
+                        defaultSettings[legacyMap[oldKey]] = settings[oldKey];
+                    }
+                }
+            }
 
             return chrome.storage.sync.set({
                 settings: defaultSettings
@@ -81,21 +83,21 @@ chrome.runtime.onInstalled.addListener((details) => {
             console.error('Failed to initialize extension settings during installation:', error);
         });
 
-    chrome.storage.local.get()
-        .then((result) => Object.keys(result).forEach(id => {
-            if (result[id].addTime.includes('/')) {
-                [d, m, y] = result[id].addTime.split('/');
-                result[id].addTime = new Date(`${m}/${d}/${y}`);
-            }
-        }))
-        .catch((error) => {
-            console.error('Failed to overwrite legacy date storage during installation:', error);
-        });
-
     if (details.reason === "install") {
         chrome.tabs.create({
             url: chrome.runtime.getURL("tabs/options/options.html")
         });
+    }
+});
+
+let settingsCache = null;
+let dirCache = null;
+
+chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync' && changes.settings) {
+        settingsCache = changes.settings.newValue ?? null;
+    } else if (area === 'local') {
+        dirCache = null;
     }
 });
 
@@ -125,24 +127,33 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
                 console.error(`Failed to delete bookmark for story ${action.id}:`, error);
             });
     } else if (action.message === 'get-info') {
-        chrome.storage.sync.get('settings')
-            .then((result) => {
-                const settings = result.settings;
-                sendResponse({ result: settings });
-            })
-            .catch((error) => {
-                console.error('Failed to retrieve extension settings from storage:', error);
-                sendResponse({ result: {} });
-            });
+        if (settingsCache) {
+            sendResponse({ result: settingsCache });
+        } else {
+            chrome.storage.sync.get('settings')
+                .then((result) => {
+                    settingsCache = result.settings || {};
+                    sendResponse({ result: settingsCache });
+                })
+                .catch((error) => {
+                    console.error('Failed to retrieve extension settings from storage:', error);
+                    sendResponse({ result: {} });
+                });
+        }
     } else if (action.message === 'get-dir') {
-        chrome.storage.local.get()
-            .then((result) => {
-                sendResponse({ result });
-            })
-            .catch((error) => {
-                console.error('Failed to retrieve bookmark directory from local storage:', error);
-                sendResponse({ result: {} });
-            });
+        if (dirCache) {
+            sendResponse({ result: dirCache });
+        } else {
+            chrome.storage.local.get()
+                .then((result) => {
+                    dirCache = result;
+                    sendResponse({ result });
+                })
+                .catch((error) => {
+                    console.error('Failed to retrieve bookmark directory from local storage:', error);
+                    sendResponse({ result: {} });
+                });
+        }
     }
     else if (action.message === 'set-status') {
         chrome.storage.local.get(action.id)

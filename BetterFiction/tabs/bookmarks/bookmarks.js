@@ -1,43 +1,63 @@
 const tableBody = document.querySelector('tbody');
 const bookmarkLinks = [];
+const bookmarkForRow = new WeakMap();
 
-const formatDate = (addTime, dateFormat = "MM/DD/YY") => { 
-    if (!addTime) return '-';
+const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const STATUS_OPTIONS_HTML =
+    '<option value="Automatic">Automatic</option>' +
+    '<option value="Planned">Planned</option>' +
+    '<option value="Reading">Reading</option>' +
+    '<option value="Completed">Completed</option>' +
+    '<option value="Dropped">Dropped</option>';
 
-    let d, m, y;
-    const date = new Date(addTime);
-    d = date.getDate().toString().padStart(2, '0');
-    m = (date.getMonth() + 1).toString().padStart(2, '0');
-    y = date.getFullYear();
+const SELECT_TEMPLATE = (() => {
+    const s = document.createElement('select');
+    s.className = 'status-select';
+    s.innerHTML = STATUS_OPTIONS_HTML;
+    return s;
+})();
 
-    if (dateFormat == "MM/DD/YY") {
-        return `${m}/${d}/${y}`;
-    } else if (dateFormat == "DD.MM.YYYY") {
-        return `${d}.${m}.${y}`;
-    } else if (dateFormat == "DD Mon YYYY") {
-        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        return `${Number(d)} ${monthNames[parseInt(m) - 1]} ${y}`;
-    }
+const formatDate = (date, dateFormat = "MM/DD/YY") => {
+    if (!date) return '-';
+
+    const d = date.getDate().toString().padStart(2, '0');
+    const m = (date.getMonth() + 1).toString().padStart(2, '0');
+    const y = date.getFullYear();
+
+    if (dateFormat === "MM/DD/YY") return `${m}/${d}/${y}`;
+    if (dateFormat === "DD.MM.YYYY") return `${d}.${m}.${y}`;
+    if (dateFormat === "DD Mon YYYY") return `${Number(d)} ${MONTH_NAMES[date.getMonth()]} ${y}`;
 };
 
 
-function sortBookmarks(bookmarks, type, dir) {
-    const cache = new Map(bookmarks.map(b => [b,
-        type === 'addTime' ? (b.addTime === '-' ? Infinity : new Date(b.addTime).getTime()) 
-            : type === 'chapter' ? parseInt(b[type])
-                : b[type]
-    ]));
+const addTimeMs = new WeakMap();
 
-    bookmarks.sort((a, b) => {
-        const valA = cache.get(a);
-        const valB = cache.get(b);
-        return ((valA > valB) - (valA < valB)) * dir;
-    });
+function sortBookmarks(bookmarks, type, dir) {
+    const getKey = type === 'addTime'
+        ? (b => addTimeMs.get(b) ?? Infinity)
+        : type === 'chapter'
+            ? (b => +b.chapter)
+            : (b => b[type]);
+
+    const n = bookmarks.length;
+    const keyed = new Array(n);
+    for (let i = 0; i < n; i++) keyed[i] = { b: bookmarks[i], k: getKey(bookmarks[i]) };
+    keyed.sort((a, b) => ((a.k > b.k) - (a.k < b.k)) * dir);
+    for (let i = 0; i < n; i++) bookmarks[i] = keyed[i].b;
 }
 
+const clearRange = document.createRange();
 function renderBookmarks(bookmarks) {
-    document.querySelectorAll('.table-row').forEach(e => e.remove());
-    bookmarks.forEach(bookmark => tableBody.appendChild(createBookmarkRow(bookmark)));
+    const first = tableBody.firstChild;
+    if (first && tableBody.lastChild !== first) {
+        clearRange.setStartAfter(first);
+        clearRange.setEndAfter(tableBody.lastChild);
+        clearRange.deleteContents();
+    }
+    const fragment = document.createDocumentFragment();
+    const n = bookmarks.length;
+    for (let i = 0; i < n; i++) fragment.appendChild(createBookmarkRow(bookmarks[i]));
+    tableBody.appendChild(fragment);
 }
 
 function findStatus(bookmark) {
@@ -49,134 +69,154 @@ function findStatus(bookmark) {
     return bookmark.status;
 }
 
+const ROW_TEMPLATE = (() => {
+    const tr = document.createElement('tr');
+    tr.className = 'table-row';
+    tr.innerHTML =
+        '<td></td>' +
+        '<td><a></a></td>' +
+        '<td></td>' +
+        '<td></td>' +
+        '<td></td>' +
+        '<td class="status-cell"></td>' +
+        '<td></td>' +
+        '<td class="options-cell">' +
+        '<a href="#" class="change-link">Change status</a>' +
+        '<span class="sep"> | </span>' +
+        '<a href="#" class="delete-link">Delete</a>' +
+        '</td>';
+    return tr;
+})();
+
+const STATUS_BADGE_TEMPLATE = (() => {
+    const s = document.createElement('span');
+    s.className = 'status-badge';
+    return s;
+})();
+
+function makeStatusBadge(statusValue) {
+    const badge = STATUS_BADGE_TEMPLATE.cloneNode(false);
+    badge.classList.add(statusValue);
+    badge.textContent = statusValue;
+    return badge;
+}
+
 function createBookmarkRow(bookmark) {
-    const tableRow = document.createElement('tr');
-    tableRow.innerHTML = `
-        <td>${bookmark.id}</td>
-        <td><a href="https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}">${bookmark.storyName}</a></td>
-        <td>${bookmark.chapter}/${bookmark.chapters || '?'}</td>
-        <td>${bookmark.fandom}</td>
-        <td>${bookmark.author}</td>
-        <td class="status-cell">${findStatus(bookmark)}</td>
-        <td>${bookmark.displayDate}</td>
-        <td class="options-cell">
-            <a href="#" class="change-link">Change status</a>
-            <span class="sep"> | </span>
-            <a href="#" class="delete-link">Delete</a>
-        </td>
-    `;
+    const tableRow = ROW_TEMPLATE.cloneNode(true);
+    bookmarkForRow.set(tableRow, bookmark);
+    const statusValue = findStatus(bookmark);
+    const tds = tableRow.children;
+    tds[0].textContent = bookmark.id;
+    const a = tds[1].firstChild;
+    a.href = `https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}`;
+    a.textContent = bookmark.storyName;
+    tds[2].textContent = `${bookmark.chapter}/${bookmark.chapters || '?'}`;
+    tds[3].textContent = bookmark.fandom;
+    tds[4].textContent = bookmark.author;
+    tds[5].appendChild(makeStatusBadge(statusValue));
+    tds[6].textContent = bookmark.displayDate;
+    return tableRow;
+}
 
-    const statusCell = tableRow.querySelector('.status-cell');
-    let statusValue = findStatus(bookmark);
-    statusCell.innerHTML = `<span class="status-badge ${statusValue}">${statusValue}</span>`;
+tableBody.addEventListener('click', (e) => {
+    const target = e.target;
+    const row = target.closest('tr');
+    if (!row) return;
+    const bookmark = bookmarkForRow.get(row);
+    if (!bookmark) return;
+    const id = bookmark.id;
 
-    const optionsCell = tableRow.querySelector('.options-cell');
-    const deleteLink = optionsCell.querySelector('.delete-link');
-    const changeLink = optionsCell.querySelector('.change-link');
-    const sep = optionsCell.querySelector('.sep');
-
-    deleteLink.addEventListener('click', (e) => {
+    if (target.classList.contains('delete-link')) {
         e.preventDefault();
-        chrome.storage.local.remove(bookmark.id).catch(err =>
-            console.error(`Failed to delete bookmark for story ${bookmark.id}:`, err)
+        chrome.storage.local.remove(id).catch(err =>
+            console.error(`Failed to delete bookmark for story ${id}:`, err)
         );
-        tableRow.remove();
-    });
-
-    changeLink.addEventListener('click', (e) => {
+        bookmarkForRow.delete(row);
+        row.remove();
+    } else if (target.classList.contains('change-link')) {
         e.preventDefault();
-        changeLink.style.display = 'none';
+        target.style.display = 'none';
+        const optionsCell = target.parentElement;
+        const sep = optionsCell.children[1];
+        const statusCell = row.children[5];
 
-        const select = document.createElement('select');
-        select.className = 'status-select';
-        select.innerHTML = `
-            <option value="Automatic">Automatic</option>
-            <option value="Planned">Planned</option>
-            <option value="Reading">Reading</option>
-            <option value="Completed">Completed</option>
-            <option value="Dropped">Dropped</option>
-        `;
+        const select = SELECT_TEMPLATE.cloneNode(true);
         select.value = bookmark.status;
-
         optionsCell.insertBefore(select, sep);
 
         select.addEventListener('change', () => {
             bookmark.status = select.value;
-            statusValue = findStatus(bookmark);
-            statusCell.textContent = statusValue;
-            statusCell.innerHTML = `<span class="status-badge ${statusValue}">${statusValue}</span>`;
-
-
-            chrome.storage.local.set({ [bookmark.id]: bookmark }).catch(err =>
-                console.error(`Failed to update status for story ${bookmark.id}:`, err)
+            const statusValue = findStatus(bookmark);
+            statusCell.replaceChildren(makeStatusBadge(statusValue));
+            chrome.storage.local.set({ [id]: bookmark }).catch(err =>
+                console.error(`Failed to update status for story ${id}:`, err)
             );
-
             select.remove();
-            changeLink.style.display = '';
+            target.style.display = '';
         });
-    });
-
-    tableRow.classList.toggle('table-row');
-    return tableRow;
-}
-
-let settings;
-chrome.storage.sync.get().then((result) => {
-    settings = result.settings;
-})
-.catch((error) => {
-    console.error('Failed to load settings from sync storage:', error);
+    }
 });
 
-// Normalize and load bookmarks
-chrome.storage.local.get().then((result) => {
-    let bookmarks = result;
-    let needToUpdate = false;
+// Load settings and bookmarks together
+const settingsPromise = chrome.storage.sync.get('settings').catch((error) => {
+    console.error('Failed to load settings from sync storage:', error);
+    return {};
+});
 
-    for (const key in bookmarks) {
-        const bookmark = bookmarks[key];
+Promise.all([settingsPromise, chrome.storage.local.get()])
+    .then(([syncResult, bookmarks]) => {
+        const settings = syncResult.settings || {};
+        let needToUpdate = false;
 
-        if (bookmark.fandomName) {
-            bookmark.fandom = bookmark.fandomName;
-            delete bookmark.fandomName;
-            needToUpdate = true;
+        for (const bookmark of Object.values(bookmarks)) {
+            if (bookmark.fandomName) {
+                bookmark.fandom = bookmark.fandomName;
+                delete bookmark.fandomName;
+                needToUpdate = true;
+            }
+
+            if (bookmark.storyId) {
+                bookmark.id = bookmark.storyId;
+                delete bookmark.storyId;
+                needToUpdate = true;
+            }
+
+            if (bookmark.addTime?.includes('/')) {
+                const [day, month, year] = bookmark.addTime.split('/');
+                bookmark.addTime = new Date(`${year}-${month}-${day}T00:00:00.000Z`).toISOString();
+                needToUpdate = true;
+            }
+
+            if (!('status' in bookmark)) {
+                bookmark.status = 'Automatic';
+                needToUpdate = true;
+            }
+
+            if (bookmark.storyName) {
+                const dateObj = bookmark.addTime && bookmark.addTime !== '-' ? new Date(bookmark.addTime) : null;
+                bookmark.displayDate = formatDate(dateObj, settings.dateFormat);
+                addTimeMs.set(bookmark, dateObj ? dateObj.getTime() : Infinity);
+                bookmarkLinks.push(bookmark);
+            }
         }
 
-        if (bookmark.storyId) {
-            bookmark.id = bookmark.storyId;
-            delete bookmark.storyId;
-            needToUpdate = true;
+        if (needToUpdate) {
+            chrome.storage.local.clear()
+                .then(() => chrome.storage.local.set(bookmarks))
+                .then(() => location.reload())
+                .catch(console.error);
+            return;
         }
 
-        if (bookmark.addTime?.includes('/')) {
-            const [day, month, year] = bookmark.addTime.split('/');
-            bookmark.addTime = new Date(`${year}-${month}-${day}T00:00:00.000Z`).toISOString();
-            needToUpdate = true;
-        }
-
-        if (!('status' in bookmark)) {
-            bookmark.status = 'Automatic';
-            needToUpdate = true;
-        }
-
-        if (bookmark.storyName) {
-            bookmark.displayDate = formatDate(bookmark.addTime, settings.dateFormat);
-            bookmarkLinks.push(bookmark);
-        }
-    }
-
-    if (needToUpdate) {
-        chrome.storage.local.clear()
-            .then(() => chrome.storage.local.set(bookmarks))
-            .then(() => location.reload())
-            .catch(console.error);
-    } else {
         sortBookmarks(bookmarkLinks, 'addTime', 1);
         renderBookmarks(bookmarkLinks);
-    }
-}).catch((error) => {
-    console.error('Failed to load bookmarks from local storage:', error);
-});
+
+        // Hide organizer UI if it's off
+        if (!settings.organizer) hideOrganizerUI();
+    })
+    .catch((error) => {
+        console.error('Failed to load bookmarks from local storage:', error);
+    });
 
 // Export bookmarks
 document.querySelector('#export').addEventListener('click', () => {
@@ -194,48 +234,31 @@ document.querySelector('#export').addEventListener('click', () => {
 document.querySelector('#import').addEventListener('click', () => {
     const fileInput = Object.assign(document.createElement('input'), { type: 'file' });
 
-    fileInput.onchange = e => {
+    fileInput.onchange = async e => {
         const file = e.target.files[0];
-        const reader = new FileReader();
-
-        reader.onload = e => {
-            try {
-                const jsonData = JSON.parse(e.target.result);
-                chrome.storage.local.clear()
-                    .then(() => {
-                        const sets = Object.entries(jsonData).map(([key, value]) =>
-                            chrome.storage.local.set({ [key]: value })
-                        );
-                        return Promise.all(sets);
-                    })
-                    .then(() => location.reload())
-                    .catch(err => console.error('Failed to import bookmarks from JSON file:', err));
-            } catch (err) {
-                console.error('Failed to parse imported JSON file:', err);
-            }
-        };
-
-        reader.readAsText(file);
+        if (!file) return;
+        try {
+            const jsonData = JSON.parse(await file.text());
+            await chrome.storage.local.clear();
+            await chrome.storage.local.set(jsonData);
+            location.reload();
+        } catch (err) {
+            console.error('Failed to import bookmarks from JSON file:', err);
+        }
     };
 
     fileInput.click();
 });
 
 // Sorting
-document.querySelectorAll('th[data-sort-type]').forEach(header => {
+const sortHeaders = document.querySelectorAll('th[data-sort-type]');
+sortHeaders.forEach(header => {
     header.addEventListener('click', () => {
         const sortType = header.getAttribute('data-sort-type');
-        let sortDirection = 1;
+        const sortDirection = header.classList.toggle('descending') ? -1 : 1;
 
-        if (header.classList.contains('descending')) {
-            header.classList.remove('descending');
-            sortDirection = 1;
-        } else {
-            header.classList.add('descending');
-            sortDirection = -1;
-        }
-
-        document.querySelectorAll('th').forEach(h => h.classList.remove('active'));
+        const prevActive = document.querySelector('th.active');
+        if (prevActive && prevActive !== header) prevActive.classList.remove('active');
         header.classList.add('active');
 
         try {
@@ -259,73 +282,39 @@ function filterBookmarks(status) {
 
 
 const filterButtons = document.querySelectorAll('.filters .filter-btn');
+let activeFilterBtn = null;
 function setFilterActive(id) {
-    filterButtons.forEach(b => b.classList.toggle('filter-active', b.id === id));
+    if (activeFilterBtn) activeFilterBtn.classList.remove('filter-active');
+    activeFilterBtn = document.getElementById(id);
+    if (activeFilterBtn) activeFilterBtn.classList.add('filter-active');
 }
 
-document.querySelector('#filter-all').addEventListener('click', () => {
-    setFilterActive('filter-all');
-    filterBookmarks('All');
-});
-document.querySelector('#filter-automatic').addEventListener('click', () => {
-    setFilterActive('filter-automatic');
-    filterBookmarks('Automatic');
-});
-document.querySelector('#filter-planned').addEventListener('click', () => {
-    setFilterActive('filter-planned');
-    filterBookmarks('Planned');
-});
-document.querySelector('#filter-reading').addEventListener('click', () => {
-    setFilterActive('filter-reading');
-    filterBookmarks('Reading');
-});
-document.querySelector('#filter-completed').addEventListener('click', () => {
-    setFilterActive('filter-completed');
-    filterBookmarks('Completed');
-});
-document.querySelector('#filter-dropped').addEventListener('click', () => {
-    setFilterActive('filter-dropped');
-    filterBookmarks('Dropped');
+const FILTER_MAP = {
+    'filter-all': 'All',
+    'filter-automatic': 'Automatic',
+    'filter-planned': 'Planned',
+    'filter-reading': 'Reading',
+    'filter-completed': 'Completed',
+    'filter-dropped': 'Dropped',
+};
+
+filterButtons.forEach(btn => {
+    const status = FILTER_MAP[btn.id];
+    if (!status) return;
+    btn.addEventListener('click', () => {
+        setFilterActive(btn.id);
+        filterBookmarks(status);
+    });
 });
 
 setFilterActive('filter-all');
 
 
-const hideOrganizerUI = () => {
-    const filters = document.querySelector('.filters');
-    if (filters) filters.style.display = 'none';
-
-    const statusTh = document.querySelector('th[data-sort-type="status"]');
-    if (statusTh) statusTh.style.display = 'none';
-
-    document.querySelectorAll('.status-cell').forEach(td => {
-        td.style.display = 'none';
+function hideOrganizerUI() {
+    if (document.getElementById('bf-organizer-off')) return;
+    const style = Object.assign(document.createElement('style'), {
+        id: 'bf-organizer-off',
+        textContent: '.filters,th[data-sort-type="status"],.status-cell,.options-cell .change-link,.options-cell .sep{display:none!important;}'
     });
-
-    document.querySelectorAll('.options-cell .change-link, .options-cell .sep').forEach(el => {
-        el.style.display = 'none';
-    });
-};
-
-// Hide organizer ui if it off
-chrome.storage.sync.get('settings')
-    .then(({ settings = {} }) => {
-        if (settings.organizer) return;
-
-        hideOrganizerUI();
-
-        const tbody = document.querySelector('table tbody');
-        if (tbody) {
-            const mo = new MutationObserver(() => {
-                requestAnimationFrame(hideOrganizerUI);
-            });
-            mo.observe(tbody, { childList: true, subtree: true });
-        }
-
-        document.querySelectorAll('th[data-sort-type]').forEach(th => {
-            th.addEventListener('click', () => {
-                setTimeout(hideOrganizerUI, 0);
-            });
-        });
-    })
-    .catch(err => console.error('Failed to apply organizer UI (status hiding):', err));
+    document.head.appendChild(style);
+}
