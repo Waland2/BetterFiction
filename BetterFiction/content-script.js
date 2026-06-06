@@ -310,7 +310,7 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
                     id: 'organizer-status-selecter', className: 'pull-right',
                     innerHTML: info.bookmarks ? `<span class="xcontrast_txt" style="font-size:12px;color:#4b5563;">Status:</span><select aria-label="Change reading status" style="height:30px;padding:2px 6px;font-size:12px;line-height:20px;border:1px solid #d1d5db;border-radius:6px;background:#fff;">${STATUSES.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('')}</select>` : '',
                 });
-                qs('select', wrap).addEventListener('change', e => {
+                qs('select', wrap)?.addEventListener('change', e => {
                     dir[id].status = e.target.value;
                     sendMsg({ message: 'set-status', id, status: e.target.value });
                 });
