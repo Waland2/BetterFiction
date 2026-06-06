@@ -3,6 +3,14 @@ const bookmarkLinks = [];
 const bookmarkForRow = new WeakMap();
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH_NAMES_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const DATE_TOKEN_RE = /Month|Mon|MM|YYYY|YY|DD|D/g;
+const TOKEN_CATEGORY = {
+    Month: 'month', Mon: 'month', MM: 'month',
+    DD: 'day', D: 'day',
+    YYYY: 'year', YY: 'year',
+};
+const DEFAULT_DATE_FORMAT = "MM/DD/YY";
 const STATUS_OPTIONS_HTML =
     '<option value="Automatic">Automatic</option>' +
     '<option value="Planned">Planned</option>' +
@@ -17,16 +25,42 @@ const SELECT_TEMPLATE = (() => {
     return s;
 })();
 
-const formatDate = (date, dateFormat = "MM/DD/YY") => {
+const isValidDateFormat = (fmt) => {
+    if (!fmt) return false;
+    const matches = [...fmt.matchAll(DATE_TOKEN_RE)];
+    if (matches.length === 0) return false;
+    const counts = { month: 0, day: 0, year: 0 };
+    for (const m of matches) counts[TOKEN_CATEGORY[m[0]]]++;
+    if (counts.month !== 1 || counts.day !== 1 || counts.year !== 1) return false;
+    if (matches[0].index !== 0) return false;
+    const last = matches[matches.length - 1];
+    if (last.index + last[0].length !== fmt.length) return false;
+    for (let i = 1; i < matches.length; i++) {
+        const prevEnd = matches[i - 1].index + matches[i - 1][0].length;
+        const sep = fmt.slice(prevEnd, matches[i].index);
+        if (sep && /[a-zA-Z0-9]/.test(sep)) return false;
+    }
+    return true;
+};
+
+const formatDate = (date, dateFormat = DEFAULT_DATE_FORMAT) => {
     if (!date) return '-';
 
-    const d = date.getDate().toString().padStart(2, '0');
-    const m = (date.getMonth() + 1).toString().padStart(2, '0');
-    const y = date.getFullYear();
+    const fmt = isValidDateFormat(dateFormat) ? dateFormat : DEFAULT_DATE_FORMAT;
 
-    if (dateFormat === "MM/DD/YY") return `${m}/${d}/${y}`;
-    if (dateFormat === "DD.MM.YYYY") return `${d}.${m}.${y}`;
-    if (dateFormat === "DD Mon YYYY") return `${Number(d)} ${MONTH_NAMES[date.getMonth()]} ${y}`;
+    const day = date.getDate();
+    const monthIdx = date.getMonth();
+    const yearFull = date.getFullYear();
+    const tokens = {
+        Month: MONTH_NAMES_FULL[monthIdx],
+        Mon: MONTH_NAMES[monthIdx],
+        MM: String(monthIdx + 1).padStart(2, '0'),
+        YYYY: String(yearFull),
+        YY: String(yearFull).slice(-2),
+        DD: String(day).padStart(2, '0'),
+        D: String(day),
+    };
+    return fmt.replace(DATE_TOKEN_RE, m => tokens[m]);
 };
 
 

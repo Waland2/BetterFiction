@@ -16,6 +16,8 @@ const _getSettings = () => {
     return _settingsPromise;
 };
 
+window.getSettings = _getSettings;
+
 /**
  * Sets up checkbox event handlers for extension settings
  * Loads current settings and saves changes to chrome storage
@@ -60,3 +62,4 @@ window.setupSelects = () => {
         });
     });
 };
+

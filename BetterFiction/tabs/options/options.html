@@ -62,15 +62,16 @@
             </div>
 
             <div class="select-label">
-                <label for="dateFormat" title="Choose how dates will be displayed">
+                <label for="dateFormat" title="Type your own date format using the tokens below">
                     Date format
                 </label>
 
-                <select id="dateFormat">
-                    <option value="MM/DD/YY">MM/DD/YY</option>
-                    <option value="DD.MM.YYYY">DD.MM.YYYY</option>
-                    <option value="DD Mon YYYY">DD Mon YYYY</option>
-                </select>
+                <input type="text" id="dateFormat" placeholder="MM/DD/YY" autocomplete="off" spellcheck="false" />
+                <div class="date-format-hint">
+                    Tokens: <code>Month</code> (January) &middot; <code>Mon</code> (Jan) &middot; <code>MM</code> (01) &middot; <code>DD</code> (01) &middot; <code>D</code> (1) &middot; <code>YYYY</code> (2000) &middot; <code>YY</code> (00). Any separator, any order.
+                    <br />Preview: <span id="dateFormatPreview"></span>
+                </div>
+                <div id="dateFormatError" class="date-format-error" hidden></div>
             </div>
         </div>
 

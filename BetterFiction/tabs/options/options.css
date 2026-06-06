@@ -228,3 +228,48 @@ header span:hover {
 .select-label select:hover {
     border-color: #741bfb;
 }
+
+.select-label input[type="text"] {
+    background-color: #1f1f1f;
+    color: #ffffff;
+    border: 1px solid #4a4a4a;
+    padding: 6px 8px;
+    border-radius: 6px;
+    font-size: 15px;
+    font-family: inherit;
+    transition: 0.2s;
+    width: 240px;
+    max-width: 100%;
+}
+
+.select-label input[type="text"]:hover,
+.select-label input[type="text"]:focus {
+    border-color: #741bfb;
+    outline: none;
+}
+
+.date-format-hint {
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: #9a9a9a;
+    line-height: 1.5;
+}
+
+.date-format-hint code {
+    background-color: #1f1f1f;
+    color: #d6c4ff;
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+#dateFormatPreview {
+    color: #ffffff;
+    font-weight: 600;
+}
+
+.date-format-error {
+    margin-top: 6px;
+    font-size: 12.5px;
+    color: #ff7676;
+}
