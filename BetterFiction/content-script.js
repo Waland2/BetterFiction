@@ -64,6 +64,17 @@ const STORY_URL_RE = /fanfiction\.net\/s\/(\d+)/;
 const UNMARKED_ICON = bookmarkIcon('none');
 const UNMARKED_HTML = `<img src="${UNMARKED_ICON}" width="24" height="24">`;
 
+const _invertCache = new Map();
+const invertColor = (c) => {
+    let r = _invertCache.get(c);
+    if (r === undefined) {
+        const m = c.match(DIGITS_RE);
+        r = m ? `rgb(${255 - +m[0]}, ${255 - +m[1]}, ${255 - +m[2]})` : c;
+        _invertCache.set(c, r);
+    }
+    return r;
+};
+
 const betterDescription = (info, el) => {
     const desc = qs('.xgray', el);
     if (!desc) return;
@@ -103,15 +114,18 @@ const betterDescription = (info, el) => {
 
     if (info.groupDescriptions) {
         desc.classList.add('bf-grouped');
-        const keyed = Array.from(desc.children, c => {
+        const children = desc.children;
+        const klen = children.length;
+        const keyed = new Array(klen);
+        const presentKeys = new Set();
+        for (let i = 0; i < klen; i++) {
+            const c = children[i];
             const cls = c.className;
             const k = cls.substring(0, cls.indexOf('meta'));
-            return [c, k, METATYPES[k]?.[0] || 0];
-        });
+            keyed[i] = [c, k, METATYPES[k]?.[0] || 0];
+            presentKeys.add(k);
+        }
         keyed.sort((a, b) => a[2] - b[2]);
-        const klen = keyed.length;
-        const presentKeys = new Set();
-        for (let i = 0; i < klen; i++) presentKeys.add(keyed[i][1]);
         const groupEnders = new Set();
         const mglen = META_GROUPS.length;
         for (let i = 0; i < mglen; i++) {
@@ -170,21 +184,18 @@ const betterDescription = (info, el) => {
             }
             const rlen = resolved.length;
             for (let i = 0; i < rlen; i++) {
-                const entry = resolved[i];
-                const targets = entry[0];
-                const color = entry[1];
-                const colorIsObj = entry[2];
+                const [targets, color, colorIsObj] = resolved[i];
                 const tlen = targets.length;
+                if (!colorIsObj) {
+                    const c = dark ? invertColor(color) : color;
+                    for (let j = 0; j < tlen; j++) targets[j].style.color = c;
+                    continue;
+                }
                 for (let j = 0; j < tlen; j++) {
                     const span = targets[j];
-                    let c = colorIsObj ? (color[span.textContent] || color) : color;
-                    if (typeof c === 'string') {
-                        if (dark) {
-                            const m = c.match(DIGITS_RE);
-                            if (m) c = `rgb(${255 - +m[0]}, ${255 - +m[1]}, ${255 - +m[2]})`;
-                        }
-                        span.style.color = c;
-                    }
+                    const c = color[span.textContent] || color;
+                    if (typeof c !== 'string') continue;
+                    span.style.color = dark ? invertColor(c) : c;
                 }
             }
         };
@@ -214,7 +225,7 @@ const getStoryMeta = (info) => {
     _storyMeta = {
         fandom: preLinks[1]?.textContent || preLinks[0]?.textContent || '',
         author: qs('#profile_top a')?.textContent || '',
-        name: document.querySelectorAll('b')[5]?.textContent || '',
+        name: document.getElementsByTagName('b')[5]?.textContent || '',
         unmarked: UNMARKED_HTML,
     };
     return _storyMeta;
@@ -338,14 +349,11 @@ const main = async () => {
     try {
         info.adblock && document.querySelectorAll('.adsbygoogle').forEach(e => e.remove());
 
-        if (info.copy) {
-            document.head.appendChild(mkEl('style', {
-                textContent: 'p{user-select:text!important;-webkit-user-select:text!important;}'
-            }));
-        }
-
+        const baseCss = '.bf-bigcovers{height:115px}.bf-bigcovers .cimage{width:75px;height:100px}.bf-marked{background-color:#e1edff}.bf-desc-parent{height:auto;min-height:120px}.bf-grouped{display:flow-root;padding-left:0}.bf-grouped .idmeta{display:none}';
         document.head.appendChild(mkEl('style', {
-            textContent: '.bf-bigcovers{height:115px}.bf-bigcovers .cimage{width:75px;height:100px}.bf-marked{background-color:#e1edff}.bf-desc-parent{height:auto;min-height:120px}.bf-grouped{display:flow-root;padding-left:0}.bf-grouped .idmeta{display:none}'
+            textContent: info.copy
+                ? baseCss + 'p{user-select:text!important;-webkit-user-select:text!important;}'
+                : baseCss
         }));
 
         if (info.bookmarks || info.shortcuts) {
@@ -378,9 +386,17 @@ const main = async () => {
                         innerHTML: meta,
                         className: 'gray',
                         onclick: () => {
-                            const indexed = Array.from(placeElem.querySelectorAll(`.${type}`), el => [el, toNum(qs(metaClass, el)?.textContent)]);
+                            const items = placeElem.querySelectorAll(`.${type}`);
+                            const n = items.length;
+                            const indexed = new Array(n);
+                            for (let i = 0; i < n; i++) {
+                                const it = items[i];
+                                indexed[i] = [it, toNum(qs(metaClass, it)?.textContent)];
+                            }
                             indexed.sort((a, b) => b[1] - a[1]);
-                            for (let i = 0; i < indexed.length; i++) container.appendChild(indexed[i][0]);
+                            const frag = document.createDocumentFragment();
+                            for (let i = 0; i < n; i++) frag.appendChild(indexed[i][0]);
+                            container.appendChild(frag);
                         }
                     });
                     reviewsSort.after(document.createTextNode(' . '), el);
@@ -390,10 +406,13 @@ const main = async () => {
 
         let id;
         let parents = document.querySelectorAll('.z-list');
-        if (!parents.length) parents = document.querySelectorAll('#profile_top');
+        if (!parents.length) {
+            const pt = document.getElementById('profile_top');
+            parents = pt ? [pt] : [];
+        }
         let dirHasEntries = false;
         for (const k in dir) { dirHasEntries = true; break; }
-        const markBookmarksActive = info.markBookmarks && dirHasEntries;
+        const markBookmarksActive = info.bookmarks && info.markBookmarks && dirHasEntries;
 
         const bigCovers = info.bigCovers;
         const separateFics = info.separateFics;

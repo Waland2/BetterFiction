@@ -96,8 +96,12 @@ let dirCache = null;
 chrome.storage.onChanged.addListener((changes, area) => {
     if (area === 'sync' && changes.settings) {
         settingsCache = changes.settings.newValue ?? null;
-    } else if (area === 'local') {
-        dirCache = null;
+    } else if (area === 'local' && dirCache) {
+        for (const k in changes) {
+            const nv = changes[k].newValue;
+            if (nv === undefined) delete dirCache[k];
+            else dirCache[k] = nv;
+        }
     }
 });
 
@@ -156,12 +160,15 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
         }
     }
     else if (action.message === 'set-status') {
-        chrome.storage.local.get(action.id)
-            .then((data) => {
-                const existing = data[action.id] || { id: action.id };
-                existing.status = action.status;
-                if (!existing.addTime) existing.addTime = new Date().toISOString();
-                return chrome.storage.local.set({ [action.id]: existing });
+        const cached = dirCache?.[action.id];
+        const load = cached
+            ? Promise.resolve(cached)
+            : chrome.storage.local.get(action.id).then(data => data[action.id] || { id: action.id });
+        load
+            .then((existing) => {
+                const updated = { ...existing, status: action.status };
+                if (!updated.addTime) updated.addTime = new Date().toISOString();
+                return chrome.storage.local.set({ [action.id]: updated });
             })
             .then(() => {
                 sendResponse({ result: { ok: true } });

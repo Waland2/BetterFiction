@@ -2,67 +2,17 @@ const tableBody = document.querySelector('tbody');
 const bookmarkLinks = [];
 const bookmarkForRow = new WeakMap();
 
-const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const MONTH_NAMES_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-const DATE_TOKEN_RE = /Month|Mon|MM|YYYY|YY|DD|D/g;
-const TOKEN_CATEGORY = {
-    Month: 'month', Mon: 'month', MM: 'month',
-    DD: 'day', D: 'day',
-    YYYY: 'year', YY: 'year',
-};
-const DEFAULT_DATE_FORMAT = "MM/DD/YY";
-const STATUS_OPTIONS_HTML =
-    '<option value="Automatic">Automatic</option>' +
-    '<option value="Planned">Planned</option>' +
-    '<option value="Reading">Reading</option>' +
-    '<option value="Completed">Completed</option>' +
-    '<option value="Dropped">Dropped</option>';
-
 const SELECT_TEMPLATE = (() => {
     const s = document.createElement('select');
     s.className = 'status-select';
-    s.innerHTML = STATUS_OPTIONS_HTML;
+    s.innerHTML =
+        '<option value="Automatic">Automatic</option>' +
+        '<option value="Planned">Planned</option>' +
+        '<option value="Reading">Reading</option>' +
+        '<option value="Completed">Completed</option>' +
+        '<option value="Dropped">Dropped</option>';
     return s;
 })();
-
-const isValidDateFormat = (fmt) => {
-    if (!fmt) return false;
-    const matches = [...fmt.matchAll(DATE_TOKEN_RE)];
-    if (matches.length === 0) return false;
-    const counts = { month: 0, day: 0, year: 0 };
-    for (const m of matches) counts[TOKEN_CATEGORY[m[0]]]++;
-    if (counts.month !== 1 || counts.day !== 1 || counts.year !== 1) return false;
-    if (matches[0].index !== 0) return false;
-    const last = matches[matches.length - 1];
-    if (last.index + last[0].length !== fmt.length) return false;
-    for (let i = 1; i < matches.length; i++) {
-        const prevEnd = matches[i - 1].index + matches[i - 1][0].length;
-        const sep = fmt.slice(prevEnd, matches[i].index);
-        if (sep && /[a-zA-Z0-9]/.test(sep)) return false;
-    }
-    return true;
-};
-
-const formatDate = (date, dateFormat = DEFAULT_DATE_FORMAT) => {
-    if (!date) return '-';
-
-    const fmt = isValidDateFormat(dateFormat) ? dateFormat : DEFAULT_DATE_FORMAT;
-
-    const day = date.getDate();
-    const monthIdx = date.getMonth();
-    const yearFull = date.getFullYear();
-    const tokens = {
-        Month: MONTH_NAMES_FULL[monthIdx],
-        Mon: MONTH_NAMES[monthIdx],
-        MM: String(monthIdx + 1).padStart(2, '0'),
-        YYYY: String(yearFull),
-        YY: String(yearFull).slice(-2),
-        DD: String(day).padStart(2, '0'),
-        D: String(day),
-    };
-    return fmt.replace(DATE_TOKEN_RE, m => tokens[m]);
-};
-
 
 const addTimeMs = new WeakMap();
 
@@ -112,7 +62,7 @@ const ROW_TEMPLATE = (() => {
         '<td></td>' +
         '<td></td>' +
         '<td></td>' +
-        '<td class="status-cell"></td>' +
+        '<td class="status-cell"><span class="status-badge"></span></td>' +
         '<td></td>' +
         '<td class="options-cell">' +
         '<a href="#" class="change-link">Change status</a>' +
@@ -122,23 +72,14 @@ const ROW_TEMPLATE = (() => {
     return tr;
 })();
 
-const STATUS_BADGE_TEMPLATE = (() => {
-    const s = document.createElement('span');
-    s.className = 'status-badge';
-    return s;
-})();
-
-function makeStatusBadge(statusValue) {
-    const badge = STATUS_BADGE_TEMPLATE.cloneNode(false);
-    badge.classList.add(statusValue);
+function applyStatusBadge(badge, statusValue) {
+    badge.className = `status-badge ${statusValue}`;
     badge.textContent = statusValue;
-    return badge;
 }
 
 function createBookmarkRow(bookmark) {
     const tableRow = ROW_TEMPLATE.cloneNode(true);
     bookmarkForRow.set(tableRow, bookmark);
-    const statusValue = findStatus(bookmark);
     const tds = tableRow.children;
     tds[0].textContent = bookmark.id;
     const a = tds[1].firstChild;
@@ -147,7 +88,7 @@ function createBookmarkRow(bookmark) {
     tds[2].textContent = `${bookmark.chapter}/${bookmark.chapters || '?'}`;
     tds[3].textContent = bookmark.fandom;
     tds[4].textContent = bookmark.author;
-    tds[5].appendChild(makeStatusBadge(statusValue));
+    applyStatusBadge(tds[5].firstChild, findStatus(bookmark));
     tds[6].textContent = bookmark.displayDate;
     return tableRow;
 }
@@ -180,8 +121,7 @@ tableBody.addEventListener('click', (e) => {
 
         select.addEventListener('change', () => {
             bookmark.status = select.value;
-            const statusValue = findStatus(bookmark);
-            statusCell.replaceChildren(makeStatusBadge(statusValue));
+            applyStatusBadge(statusCell.firstChild, findStatus(bookmark));
             chrome.storage.local.set({ [id]: bookmark }).catch(err =>
                 console.error(`Failed to update status for story ${id}:`, err)
             );
@@ -200,9 +140,13 @@ const settingsPromise = chrome.storage.sync.get('settings').catch((error) => {
 Promise.all([settingsPromise, chrome.storage.local.get()])
     .then(([syncResult, bookmarks]) => {
         const settings = syncResult.settings || {};
+        const validFmt = window.validateDateFormat(settings.dateFormat) === null
+            ? settings.dateFormat
+            : window.DEFAULT_DATE_FORMAT;
         let needToUpdate = false;
 
-        for (const bookmark of Object.values(bookmarks)) {
+        for (const key in bookmarks) {
+            const bookmark = bookmarks[key];
             if (bookmark.fandomName) {
                 bookmark.fandom = bookmark.fandomName;
                 delete bookmark.fandomName;
@@ -228,7 +172,7 @@ Promise.all([settingsPromise, chrome.storage.local.get()])
 
             if (bookmark.storyName) {
                 const dateObj = bookmark.addTime && bookmark.addTime !== '-' ? new Date(bookmark.addTime) : null;
-                bookmark.displayDate = formatDate(dateObj, settings.dateFormat);
+                bookmark.displayDate = dateObj ? window.formatDate(dateObj, validFmt) : '-';
                 addTimeMs.set(bookmark, dateObj ? dateObj.getTime() : Infinity);
                 bookmarkLinks.push(bookmark);
             }
@@ -253,7 +197,7 @@ Promise.all([settingsPromise, chrome.storage.local.get()])
     });
 
 // Export bookmarks
-document.querySelector('#export').addEventListener('click', () => {
+document.getElementById('export').addEventListener('click', () => {
     chrome.storage.local.get().then(result => {
         const blob = new Blob([JSON.stringify(result)], { type: 'application/json;charset=utf-8' });
         const link = Object.assign(document.createElement('a'), {
@@ -265,7 +209,7 @@ document.querySelector('#export').addEventListener('click', () => {
 });
 
 // Import bookmarks
-document.querySelector('#import').addEventListener('click', () => {
+document.getElementById('import').addEventListener('click', () => {
     const fileInput = Object.assign(document.createElement('input'), { type: 'file' });
 
     fileInput.onchange = async e => {
@@ -286,14 +230,15 @@ document.querySelector('#import').addEventListener('click', () => {
 
 // Sorting
 const sortHeaders = document.querySelectorAll('th[data-sort-type]');
+let activeSortHeader = document.querySelector('th.active');
 sortHeaders.forEach(header => {
     header.addEventListener('click', () => {
         const sortType = header.getAttribute('data-sort-type');
         const sortDirection = header.classList.toggle('descending') ? -1 : 1;
 
-        const prevActive = document.querySelector('th.active');
-        if (prevActive && prevActive !== header) prevActive.classList.remove('active');
+        if (activeSortHeader && activeSortHeader !== header) activeSortHeader.classList.remove('active');
         header.classList.add('active');
+        activeSortHeader = header;
 
         try {
             sortBookmarks(bookmarkLinks, sortType, sortDirection);
@@ -315,14 +260,6 @@ function filterBookmarks(status) {
 }
 
 
-const filterButtons = document.querySelectorAll('.filters .filter-btn');
-let activeFilterBtn = null;
-function setFilterActive(id) {
-    if (activeFilterBtn) activeFilterBtn.classList.remove('filter-active');
-    activeFilterBtn = document.getElementById(id);
-    if (activeFilterBtn) activeFilterBtn.classList.add('filter-active');
-}
-
 const FILTER_MAP = {
     'filter-all': 'All',
     'filter-automatic': 'Automatic',
@@ -332,16 +269,22 @@ const FILTER_MAP = {
     'filter-dropped': 'Dropped',
 };
 
-filterButtons.forEach(btn => {
+let activeFilterBtn = null;
+function setFilterActive(btn) {
+    if (activeFilterBtn) activeFilterBtn.classList.remove('filter-active');
+    activeFilterBtn = btn;
+    if (btn) btn.classList.add('filter-active');
+}
+
+document.querySelectorAll('.filters .filter-btn').forEach(btn => {
     const status = FILTER_MAP[btn.id];
     if (!status) return;
     btn.addEventListener('click', () => {
-        setFilterActive(btn.id);
+        setFilterActive(btn);
         filterBookmarks(status);
     });
+    if (btn.id === 'filter-all') setFilterActive(btn);
 });
-
-setFilterActive('filter-all');
 
 
 function hideOrganizerUI() {
