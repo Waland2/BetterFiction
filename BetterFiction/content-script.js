@@ -344,8 +344,48 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
     }
 };
 
+/**
+ * Ids of the stories shown on this page: the story being read, or every story in a list.
+ * @returns {string[]}
+ */
+const pageStoryIds = () => {
+    const ids = new Set();
+    const current = STORY_URL_RE.exec(location.href)?.[1];
+    if (current) ids.add(current);
+    const lists = document.querySelectorAll('.z-list');
+    for (let i = 0; i < lists.length; i++) {
+        const anchor = qs('a', lists[i]);
+        const storyId = anchor && STORY_URL_RE.exec(anchor.href)?.[1];
+        if (storyId) ids.add(storyId);
+    }
+    return [...ids];
+};
+
+/**
+ * Reads the settings and the bookmarks of the stories on this page straight from storage.
+ * This skips waking the background script (it sleeps after ~30 s) and copying the whole
+ * library into every page, which gets slow on phones and tablets with a big library.
+ * @returns {Promise<[Object, Object]>} The settings and the bookmarks, by story id.
+ */
+const loadInfoAndDir = () => {
+    const ids = pageStoryIds();
+    return Promise.all([
+        chrome.storage.sync.get('settings')
+            .then((result) => result.settings || {})
+            .catch((error) => {
+                console.error('Failed to load settings:', error);
+                return {};
+            }),
+        (ids.length ? chrome.storage.local.get(ids) : Promise.resolve({}))
+            .catch((error) => {
+                console.error('Failed to load bookmarks for this page:', error);
+                return {};
+            }),
+    ]);
+};
+
 const main = async () => {
-    const [info, dir] = await Promise.all([sendMsg({ message: 'get-info' }), sendMsg({ message: 'get-dir' })]);
+    const [info, dir] = await loadInfoAndDir();
     try {
         info.adblock && document.querySelectorAll('.adsbygoogle').forEach(e => e.remove());
 
