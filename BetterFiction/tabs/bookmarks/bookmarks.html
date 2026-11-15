@@ -4,46 +4,61 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bookmarks</title>
+    <title>BetterFiction bookmarks</title>
     <link rel="stylesheet" type="text/css" href="bookmarks.css" />
 </head>
 
 <body>
-    <div class="controls">
-        <button id="export">Export bookmarks</button>
-        <button id="import">Import bookmarks</button>
-    </div>
-    <div class="filters">
-        <button id="filter-all" class="filter-btn">All</button>
-        <button id="filter-automatic" class="filter-btn">Automatic</button>
-        <button id="filter-reading" class="filter-btn">Reading</button>
-        <button id="filter-completed" class="filter-btn">Completed</button>
-        <button id="filter-planned" class="filter-btn">Planned</button>
-        <button id="filter-dropped" class="filter-btn">Dropped</button>
-    </div>
+    <main>
+        <header>
+            <div class="heading">
+                <h1>Bookmarks</h1>
+                <p id="count"></p>
+            </div>
+            <div class="tools">
+                <button type="button" class="button" id="export"
+                    title="Save all your bookmarks to a file">Export</button>
+                <button type="button" class="button" id="import"
+                    title="Replace your bookmarks with the ones in a file">Import</button>
+            </div>
+        </header>
 
+        <div class="controls">
+            <label class="search">
+                <span class="visually-hidden">Search bookmarks</span>
+                <input type="search" id="search" placeholder="Search by title, author or fandom" autocomplete="off" />
+            </label>
 
+            <div class="filters" id="filters" role="group" aria-label="Filter by status">
+                <button type="button" class="filter" data-status="All" aria-pressed="true">All <span></span></button>
+                <button type="button" class="filter" data-status="Automatic" aria-pressed="false">Automatic <span></span></button>
+                <button type="button" class="filter" data-status="Reading" aria-pressed="false">Reading <span></span></button>
+                <button type="button" class="filter" data-status="Completed" aria-pressed="false">Completed <span></span></button>
+                <button type="button" class="filter" data-status="Planned" aria-pressed="false">Planned <span></span></button>
+                <button type="button" class="filter" data-status="Dropped" aria-pressed="false">Dropped <span></span></button>
+            </div>
 
-    <div class="container">
-        <h1>Bookmarks list</h1>
-    </div>
+            <label class="sort">
+                <span>Sort</span>
+                <select id="sort">
+                    <option value="newest">Newest first</option>
+                    <option value="oldest">Oldest first</option>
+                    <option value="storyName">Title</option>
+                    <option value="author">Author</option>
+                    <option value="fandom">Fandom</option>
+                    <option value="progress">Progress</option>
+                </select>
+            </label>
+        </div>
 
-    <div class="container">
-        <table class="table table-hover table-responsive table-border">
-            <tbody>
-                <tr>
-                    <th data-sort-type="id">ID</th>
-                    <th data-sort-type="storyName">Name</th>
-                    <th data-sort-type="chapter">Chapter</th>
-                    <th data-sort-type="fandom">Fandom</th>
-                    <th data-sort-type="author">Author</th>
-                    <th data-sort-type="status">Status</th>
-                    <th data-sort-type="addTime" class="active">Time</th>
-                    <th>Options</th>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+        <p class="notice" id="notice" role="status" hidden>
+            <span id="notice-text"></span>
+            <button type="button" class="link-button" id="undo">Undo</button>
+        </p>
+
+        <ul class="list" id="list"></ul>
+        <p class="empty" id="empty" hidden></p>
+    </main>
 
     <script src="../../utils/handlers.js"></script>
     <script src="bookmarks.js"></script>
