@@ -498,12 +498,16 @@ const main = async () => {
         // instead of the mobile home page
         const mobileButton = qs('.icon-kub-mobile');
         if (info.siteSwitch && mobileButton) {
-            mobileButton.removeAttribute('onclick');
             mobileButton.title = 'Mobile Edition (this page)';
             mobileButton.style.cursor = 'pointer';
-            mobileButton.addEventListener('click', () => {
+            // Caught on the way down, before it reaches the button, so the site's own
+            // onclick (which goes to the mobile home page) never runs
+            document.addEventListener('click', (event) => {
+                if (!event.target.closest?.('.icon-kub-mobile')) return;
+                event.stopPropagation();
+                event.preventDefault();
                 location.href = mobileUrl(location.href);
-            });
+            }, true);
         }
 
         if (info.profileSorts) {
