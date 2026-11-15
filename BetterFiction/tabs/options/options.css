@@ -1,275 +1,246 @@
+/* BetterFiction settings page: dark theme with the purple accent */
+:root {
+    --page: #2d2d2d;
+    --panel: #282828;
+    --rule: #3a3a3a;
+    --field: #1f1f1f;
+    --text: #ffffff;
+    --muted: #a6a6a6;
+    --accent: #741bfb;
+    --accent-hover: #5200cc;
+    --switch-off: #5a5a5a;
+    --link: #a2d5ff;
+    --link-hover: #57b2fc;
+    --error: #ff7676;
+    --focus: #a2d5ff;
+}
+
 * {
-    margin: 0;
-    padding: 0;
+    box-sizing: border-box;
 }
 
 body {
-    color: #ffffff;
-    background-color: #2d2d2d;
+    margin: 0;
+    color: var(--text);
+    background-color: var(--page);
     font-family: Arial, sans-serif;
+    font-size: 15px;
+    line-height: 1.4;
 }
 
 main {
-    padding: 20px 20px;
-    width: 40%;
-    margin: auto;
-    background-color: #282828;
-    border-radius: 10px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 24px 16px 40px;
 }
 
+/* Header */
 header {
     display: flex;
-    justify-content: center;
-    margin-top: 3px;
-    margin-bottom: 10px;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 8px;
 }
 
-header span {
-    font-size: 25px;
-    font-weight: 700;
-    transition: 0.25s;
+header img {
+    flex: none;
+    border-radius: 10px;
 }
 
-header span:hover {
-    color: #d5d5d5;
-    transition: 0.25s;
+header h1 {
+    margin: 0;
+    font-size: 26px;
 }
 
-.features {
-    border-top: 2px solid #2d2d2d;
-    padding: 12px 0;
+header p {
+    margin: 2px 0 0;
+    color: var(--muted);
+    font-size: 14px;
 }
 
-.features .checkbox-label {
-    padding: 1px 2px;
+/* Sections */
+section {
+    margin-top: 24px;
 }
 
-.header {
+section h2 {
+    margin: 0 0 8px 2px;
     color: #cdcdcd;
-    font-size: 20px;
-    margin-bottom: 5px;
+    font-size: 18px;
 }
 
-.checkbox-label {
+.panel {
+    background-color: var(--panel);
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+/* One setting: name and explanation on the left, switch on the right */
+.row {
     display: flex;
     align-items: center;
-    margin-bottom: 5px;
-    font-size: 15.6px;
-    transition: 0.25s;
-}
-
-.checkbox-label:hover {
-    color: #e1e1e1;
-    transition: 0.25s;
-}
-
-@supports (-webkit-appearance: none) or (-moz-appearance: none) {
-    .checkbox-label input[type='checkbox'] {
-        --active: #741bfb;
-        --active-inner: #ffffff;
-        --focus: 2px rgba(39, 94, 254, 0.3);
-        --border: #bbc1e1;
-        --border-hover: #741bfb;
-        --background: #ffffff;
-        --disabled: #f6f8ff;
-        --disabled-inner: #e1e6f9;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        height: 15px;
-        outline: none;
-        display: inline-block;
-        vertical-align: top;
-        position: relative;
-        margin: 2px;
-        cursor: pointer;
-        border: 1px solid var(--bc, var(--border));
-        background: var(--b, var(--background));
-        transition:
-            background 0.3s,
-            border-color 0.3s,
-            box-shadow 0.2s;
-    }
-
-    .checkbox-label input[type='checkbox']:after {
-        content: '';
-        display: block;
-        left: 0;
-        top: 0;
-        position: absolute;
-        transition:
-            transform var(--d-t, 0.3s) var(--d-t-e, ease),
-            opacity var(--d-o, 0.2s);
-    }
-
-    .checkbox-label input[type='checkbox']:checked {
-        --b: var(--active);
-        --bc: var(--active);
-        --d-o: 0.3s;
-        --d-t: 0.6s;
-        --d-t-e: cubic-bezier(0.2, 0.85, 0.32, 1.2);
-    }
-
-    .checkbox-label input[type='checkbox']:disabled {
-        --b: var(--disabled);
-        cursor: not-allowed;
-        opacity: 0.9;
-    }
-
-    .checkbox-label input[type='checkbox']:disabled:checked {
-        --b: var(--disabled-inner);
-        --bc: var(--border);
-    }
-
-    .checkbox-label input[type='checkbox']:disabled+label {
-        cursor: not-allowed;
-    }
-
-    .checkbox-label input[type='checkbox']:hover:not(:checked):not(:disabled) {
-        --bc: var(--border-hover);
-    }
-
-    .checkbox-label input[type='checkbox']:focus {
-        box-shadow: 0 0 0 var(--focus);
-    }
-
-    .checkbox-label input[type='checkbox']:not(.switch) {
-        width: 15px;
-    }
-
-    .checkbox-label input[type='checkbox']:not(.switch):after {
-        opacity: var(--o, 0);
-    }
-
-    .checkbox-label input[type='checkbox']:not(.switch):checked {
-        --o: 1;
-    }
-
-    .checkbox-label input[type='checkbox']+label {
-        display: inline-block;
-        vertical-align: middle;
-        cursor: pointer;
-        margin-left: 4px;
-    }
-
-    .checkbox-label input[type='checkbox']:not(.switch) {
-        border-radius: 4px;
-    }
-
-    .checkbox-label input[type='checkbox']:not(.switch):after {
-        border: 2px solid var(--active-inner);
-        border-top: 0;
-        border-left: 0;
-        width: 3px;
-        height: 6px;
-        left: 5px;
-        top: 2px;
-        transform: rotate(var(--r, 20deg));
-    }
-
-    .checkbox-label input[type='checkbox']:not(.switch):checked {
-        --r: 43deg;
-    }
-
-    .checkbox-label:hover input[type='checkbox']:checked {
-        --b: #5200cc;
-        --bc: #5200cc;
-    }
-}
-
-.checkbox-label * {
-    box-sizing: inherit;
-}
-
-.checkbox-label *:before,
-.checkbox-label *:after {
-    box-sizing: inherit;
-}
-
-.note {
-    font-size: 14px;
-    border-top: 2px solid #2d2d2d;
-    padding: 10px;
-    text-align: center;
-}
-
-.note a {
-    text-decoration: none;
-    color: #a2d5ff;
-    transition: 0.15s;
-}
-
-.note a:hover {
-    transition: 0.15s;
-    color: #57b2fc;
-}
-
-.select-label {
-    margin: 10px 0;
-    font-size: 15.6px;
-    color: #cdcdcd;
-}
-
-.select-label label {
-    margin-bottom: 4px;
-}
-
-.select-label select {
-    background-color: #1f1f1f;
-    color: #ffffff;
-    border: 1px solid #4a4a4a;
-    padding: 6px 8px;
-    border-radius: 6px;
-    font-size: 15px;
-    transition: 0.2s;
+    gap: 16px;
+    padding: 12px 16px;
     cursor: pointer;
 }
 
-.select-label select:hover {
-    border-color: #741bfb;
+.row + .row {
+    border-top: 1px solid var(--rule);
 }
 
-.select-label input[type="text"] {
-    background-color: #1f1f1f;
-    color: #ffffff;
-    border: 1px solid #4a4a4a;
-    padding: 6px 8px;
-    border-radius: 6px;
-    font-size: 15px;
-    font-family: inherit;
-    transition: 0.2s;
+.row:hover {
+    background-color: #2f2f2f;
+}
+
+.row .text {
+    flex: 1;
+    min-width: 0;
+}
+
+.row .name {
+    display: block;
+    font-weight: 700;
+}
+
+.row .desc {
+    display: block;
+    margin-top: 2px;
+    color: var(--muted);
+    font-size: 13.5px;
+}
+
+/* On/off switch (a styled checkbox, so it still works with the keyboard and screen readers) */
+.switch {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: none;
+    position: relative;
+    width: 46px;
+    height: 26px;
+    margin: 0;
+    border-radius: 13px;
+    background-color: var(--switch-off);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+    transition: transform 0.2s;
+}
+
+.switch:checked {
+    background-color: var(--accent);
+}
+
+.row:hover .switch:checked {
+    background-color: var(--accent-hover);
+}
+
+.switch:checked::after {
+    transform: translateX(20px);
+}
+
+.switch:focus-visible,
+input[type='text']:focus-visible,
+a:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+}
+
+/* Date format field */
+.row.field {
+    display: block;
+    cursor: auto;
+}
+
+.row.field:hover {
+    background-color: transparent;
+}
+
+.row.field input[type='text'] {
     width: 240px;
     max-width: 100%;
+    margin-top: 10px;
+    padding: 7px 9px;
+    border: 1px solid #4a4a4a;
+    border-radius: 6px;
+    background-color: var(--field);
+    color: var(--text);
+    font: inherit;
 }
 
-.select-label input[type="text"]:hover,
-.select-label input[type="text"]:focus {
-    border-color: #741bfb;
-    outline: none;
+.row.field input[type='text']:hover,
+.row.field input[type='text']:focus {
+    border-color: var(--accent);
+}
+
+.date-format-hint,
+.date-format-preview,
+.date-format-error {
+    margin: 8px 0 0;
+    font-size: 13px;
 }
 
 .date-format-hint {
-    margin-top: 6px;
-    font-size: 12.5px;
-    color: #9a9a9a;
-    line-height: 1.5;
+    color: var(--muted);
+    line-height: 1.8;
 }
 
 .date-format-hint code {
-    background-color: #1f1f1f;
-    color: #d6c4ff;
     padding: 1px 5px;
     border-radius: 4px;
-    font-size: 12px;
+    background-color: var(--field);
+    color: #d6c4ff;
+    font-size: 12.5px;
+}
+
+.date-format-preview {
+    color: var(--muted);
 }
 
 #dateFormatPreview {
-    color: #ffffff;
-    font-weight: 600;
+    color: var(--text);
+    font-weight: 700;
 }
 
 .date-format-error {
-    margin-top: 6px;
-    font-size: 12.5px;
-    color: #ff7676;
+    color: var(--error);
+}
+
+/* Footer */
+footer {
+    margin-top: 28px;
+    color: var(--muted);
+    font-size: 14px;
+    text-align: center;
+}
+
+footer p {
+    margin: 4px 0;
+}
+
+footer a {
+    color: var(--link);
+    text-decoration: none;
+}
+
+footer a:hover {
+    color: var(--link-hover);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .switch,
+    .switch::after {
+        transition: none;
+    }
 }

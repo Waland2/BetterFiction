@@ -1,6 +1,8 @@
 setupCheckboxes();
 setupSelects();
 
+document.getElementById('version').textContent = chrome.runtime.getManifest().version;
+
 const dateInput = document.getElementById('dateFormat');
 const previewEl = document.getElementById('dateFormatPreview');
 const errorEl = document.getElementById('dateFormatError');
