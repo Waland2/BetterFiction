@@ -20,7 +20,10 @@ const primaryFunctions = [
 const secondaryFunctions = [
     'adblock',
     'copy',
-    'shortcuts',
+    'favoritesLink',
+    'followsLink',
+    'profileLink',
+    'siteSwitch',
     'bookmarks',
     'wordCounter',
     'profileSorts',
@@ -65,6 +68,12 @@ chrome.runtime.onInstalled.addListener((details) => {
                     if (settings[setting] !== undefined) {
                         defaultSettings[setting] = settings[setting];
                     }
+                }
+                // "Icons for quick navigation" used to be one switch for both Favorites and Follows
+                if (settings.shortcuts !== undefined) {
+                    ['favoritesLink', 'followsLink'].forEach((setting) => {
+                        if (settings[setting] === undefined) defaultSettings[setting] = settings.shortcuts;
+                    });
                 }
                 // compatibility with old version settings
                 for (let i = 0; i < legacyMapKeys.length; i++) {

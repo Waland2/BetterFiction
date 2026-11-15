@@ -152,6 +152,7 @@ section h2 {
 
 .switch:focus-visible,
 input[type='text']:focus-visible,
+input[type='url']:focus-visible,
 a:focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
@@ -167,7 +168,8 @@ a:focus-visible {
     background-color: transparent;
 }
 
-.row.field input[type='text'] {
+.row.field input[type='text'],
+.row.field input[type='url'] {
     width: 240px;
     max-width: 100%;
     margin-top: 10px;
@@ -180,7 +182,9 @@ a:focus-visible {
 }
 
 .row.field input[type='text']:hover,
-.row.field input[type='text']:focus {
+.row.field input[type='text']:focus,
+.row.field input[type='url']:hover,
+.row.field input[type='url']:focus {
     border-color: var(--accent);
 }
 
@@ -214,6 +218,24 @@ a:focus-visible {
 }
 
 .date-format-error {
+    color: var(--error);
+}
+
+.row.field input.wide {
+    width: 100%;
+}
+
+.field-message {
+    margin: 8px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.field-message:empty {
+    display: none;
+}
+
+.field-message.error {
     color: var(--error);
 }
 

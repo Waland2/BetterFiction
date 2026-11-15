@@ -61,6 +61,40 @@ const bookmarkIcon = c => {
 const storyContrast = qs('[title=\'Story Contrast\']');
 const repaint = () => { storyContrast?.click?.(); storyContrast?.click?.(); };
 const STORY_URL_RE = /fanfiction\.net\/s\/(\d+)/;
+const PROFILE_URL_RE = /^https:\/\/www\.fanfiction\.net\/u\/\d+/;
+const PROFILE_ICON = 'M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10m-9 10c0-5 4-8 9-8s9 3 9 8z';
+
+// Pages the mobile site keeps at a different address: [desktop, mobile]
+const MOBILE_PAGES = [
+    ['/account/settings.php', '/m/acct.php'],
+    ['/favorites/story.php', '/m/f_story.php'],
+    ['/favorites/author.php', '/m/f_author.php'],
+    ['/alert/story.php', '/m/a_story.php'],
+    ['/alert/author.php', '/m/a_author.php'],
+    ['/pm2/inbox.php', '/m/pm2/inbox.php'],
+    ['/login.php', '/m/login.php'],
+];
+// Any other page in these sections opens the section's main page on the mobile site
+const MOBILE_SECTIONS = [
+    ['/account/', '/m/acct.php'],
+    ['/favorites/', '/m/f_story.php'],
+    ['/alert/', '/m/a_story.php'],
+    ['/pm2/', '/m/pm2/inbox.php'],
+];
+
+/**
+ * The address of the same page on the mobile site (m.fanfiction.net).
+ * Stories, lists and profiles keep their address; account pages live under /m/ there.
+ * @param {string} address - A www.fanfiction.net address.
+ * @returns {string}
+ */
+const mobileUrl = (address) => {
+    const url = new URL(address);
+    const page = MOBILE_PAGES.find(([desktop]) => desktop === url.pathname)
+        || MOBILE_SECTIONS.find(([start]) => url.pathname.startsWith(start));
+    if (page) return `https://m.fanfiction.net${page[1]}`;
+    return `https://m.fanfiction.net${url.pathname}${url.search}${url.hash}`;
+};
 const UNMARKED_ICON = bookmarkIcon('none');
 const UNMARKED_HTML = `<img src="${UNMARKED_ICON}" width="24" height="24">`;
 
@@ -356,20 +390,52 @@ const main = async () => {
                 : baseCss
         }));
 
-        if (info.bookmarks || info.shortcuts) {
-            const topMenu = qs('div div');
-            if (topMenu) {
-                const frag = document.createDocumentFragment();
-                const add = (name, ico, link, style = '') => frag.appendChild(mkEl('span', {
-                    innerHTML: `<a href='${link}' target="_blank" style='position: relative; cursor: default; display: inline-block; margin-left: 10px;'><img src="${ico}" style="vertical-align: middle; ${style}" width="24" height="24" title="${name}" alt="${name}"></a>`
+        const topMenu = qs('div div');
+        if (topMenu && (info.bookmarks || info.favoritesLink || info.followsLink || info.profileLink)) {
+            const frag = document.createDocumentFragment();
+            const add = (name, ico, link, style = '', newTab = true) => {
+                const anchor = mkEl('a', {
+                    href: link,
+                    style: 'position: relative; cursor: default; display: inline-block; margin-left: 10px;',
+                });
+                if (newTab) anchor.target = '_blank';
+                anchor.appendChild(mkEl('img', {
+                    src: ico, width: 24, height: 24, title: name, alt: name,
+                    style: `vertical-align: middle; ${style}`,
                 }));
-                if (info.bookmarks) add('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -1px 0px rgba(255,255,255,1));');
-                if (info.shortcuts) {
-                    add('Favorites', icon('m12 21-7-7C-6 4 10 0 12 6c2-6 18-1 7 8z', '#fff', '#333298'), 'https://www.fanfiction.net/favorites/story.php');
-                    add('Alerts', icon('M7 4h2l3 1 10-1 1 1v14H1V5zM3 6v11h8V7C9 6 5 6 3 7m10-1v11h8V6zm7-6q1 8-1 11s-3 4-5 5q-1-9 1-11', '#fff', 'none'), 'https://www.fanfiction.net/alert/story.php');
-                }
-                topMenu.appendChild(frag);
+                const span = mkEl('span');
+                span.appendChild(anchor);
+                return frag.appendChild(span);
+            };
+            if (info.bookmarks) add('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -1px 0px rgba(255,255,255,1));');
+            if (info.favoritesLink) add('Favorites', icon('m12 21-7-7C-6 4 10 0 12 6c2-6 18-1 7 8z', '#fff', '#333298'), 'https://www.fanfiction.net/favorites/story.php');
+            if (info.followsLink) add('Alerts', icon('M7 4h2l3 1 10-1 1 1v14H1V5zM3 6v11h8V7C9 6 5 6 3 7m10-1v11h8V6zm7-6q1 8-1 11s-3 4-5 5q-1-9 1-11', '#fff', 'none'), 'https://www.fanfiction.net/alert/story.php');
+            if (info.profileLink) {
+                // Your profile address is set on the settings page; the icon is added once it's read
+                const slot = frag.appendChild(mkEl('span'));
+                chrome.storage.sync.get('profileUrl')
+                    .then(({ profileUrl }) => {
+                        if (!PROFILE_URL_RE.test(profileUrl || '')) return;
+                        const holder = add('My profile', icon(PROFILE_ICON, '#fff', 'none'), profileUrl, '', false);
+                        slot.replaceWith(holder);
+                    })
+                    .catch((error) => {
+                        console.error('Failed to load the profile address:', error);
+                    });
             }
+            topMenu.appendChild(frag);
+        }
+
+        // The site's "Mobile Edition" button opens this same page on the mobile site
+        // instead of the mobile home page
+        const mobileButton = qs('.icon-kub-mobile');
+        if (info.siteSwitch && mobileButton) {
+            mobileButton.removeAttribute('onclick');
+            mobileButton.title = 'Mobile Edition (this page)';
+            mobileButton.style.cursor = 'pointer';
+            mobileButton.addEventListener('click', () => {
+                location.href = mobileUrl(location.href);
+            });
         }
 
         if (info.profileSorts) {
