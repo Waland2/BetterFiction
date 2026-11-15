@@ -6,6 +6,7 @@
 const primaryFunctions = [
     'autoSave',
     'markBookmarks',
+    'lastRead',
     'organizer',
     'entireWork',
     'groupDescriptions',
@@ -32,6 +33,7 @@ const secondaryFunctions = [
 // Default values for primary functions
 const primaryDefaults = {
     markBookmarks: true,
+    lastRead: true,
     entireWork: true,
     groupDescriptions: true,
     styleDescriptions: true,
@@ -91,21 +93,6 @@ chrome.runtime.onInstalled.addListener((details) => {
     }
 });
 
-let settingsCache = null;
-let dirCache = null;
-
-chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'sync' && changes.settings) {
-        settingsCache = changes.settings.newValue ?? null;
-    } else if (area === 'local' && dirCache) {
-        for (const k in changes) {
-            const nv = changes[k].newValue;
-            if (nv === undefined) delete dirCache[k];
-            else dirCache[k] = nv;
-        }
-    }
-});
-
 /**
  * Handles all runtime messages for the extension.
  */
@@ -131,41 +118,10 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
             .catch((error) => {
                 console.error(`Failed to delete bookmark for story ${action.id}:`, error);
             });
-    } else if (action.message === 'get-info') {
-        if (settingsCache) {
-            sendResponse({ result: settingsCache });
-        } else {
-            chrome.storage.sync.get('settings')
-                .then((result) => {
-                    settingsCache = result.settings || {};
-                    sendResponse({ result: settingsCache });
-                })
-                .catch((error) => {
-                    console.error('Failed to retrieve extension settings from storage:', error);
-                    sendResponse({ result: {} });
-                });
-        }
-    } else if (action.message === 'get-dir') {
-        if (dirCache) {
-            sendResponse({ result: dirCache });
-        } else {
-            chrome.storage.local.get()
-                .then((result) => {
-                    dirCache = result;
-                    sendResponse({ result });
-                })
-                .catch((error) => {
-                    console.error('Failed to retrieve bookmark directory from local storage:', error);
-                    sendResponse({ result: {} });
-                });
-        }
     }
     else if (action.message === 'set-status') {
-        const cached = dirCache?.[action.id];
-        const load = cached
-            ? Promise.resolve(cached)
-            : chrome.storage.local.get(action.id).then(data => data[action.id] || { id: action.id });
-        load
+        chrome.storage.local.get(action.id)
+            .then(data => data[action.id] || { id: action.id })
             .then((existing) => {
                 const updated = { ...existing, status: action.status };
                 if (!updated.addTime) updated.addTime = new Date().toISOString();
