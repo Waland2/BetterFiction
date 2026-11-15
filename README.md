@@ -26,3 +26,7 @@ A browser extension that improves your FanFiction.net experience with bookmarks,
 <img src="./screenshots/3.png" alt="Bookmarks page">
 <img src="./screenshots/4.png" alt="Popup settings">
 <img src="./screenshots/5.png" alt="Settings page">
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).

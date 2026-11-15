@@ -238,6 +238,32 @@ const betterDescription = (info, el) => {
     }
 };
 
+/**
+ * Shows "Last read: N" in a story's details, right after the word count, as a link to that chapter.
+ * Called again whenever the bookmark moves; an old link is replaced and no chapter removes it.
+ * @param {Object} info - Extension settings.
+ * @param {Element} el - The story's container (#profile_top or a .z-list item).
+ * @param {string} storyId - FanFiction.net story id.
+ * @param {number} [chapter] - The bookmarked chapter.
+ */
+const showLastRead = (info, el, storyId, chapter) => {
+    const desc = qs('.xgray', el);
+    if (!desc) return;
+    qs('.bf-lastread', desc)?.remove();
+    if (!info.lastRead || !chapter) return;
+    const link = mkEl('a', {
+        href: `https://www.fanfiction.net/s/${storyId}/${chapter}/`,
+        textContent: `Last read: ${chapter}`,
+        title: `Go to chapter ${chapter}`,
+    });
+    link.style.fontWeight = '600';
+    const item = mkEl('span', { className: 'bf-lastread' });
+    item.append(' - ', link);
+    const words = qs('.wordsmeta', desc) || qs('.chaptersmeta', desc);
+    if (words) words.after(item);
+    else desc.append(item);
+};
+
 const getBookmarkColor = (info, dir, id, ch, c) => {
     const entry = dir[id];
     if (!info.organizer) return '#096dd9';
@@ -331,6 +357,7 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
                         if (orgSelector) orgSelector.style.display = 'none';
                         delete dir[id];
                         sendMsg({ message: 'del-bookmark', id });
+                        showLastRead(info, qs('#profile_top'), id);
                         return;
                     }
                     document.getElementById(`bookmark${dirEntry?.chapter || 0}`)?.click();
@@ -341,6 +368,7 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
                     if (orgSelector) orgSelector.style.display = '';
                     bm.message = 'set-bookmark';
                     sendMsg(bm);
+                    showLastRead(info, qs('#profile_top'), id, ch);
                 }
             });
             sep.children[1]?.after(btn);
@@ -378,8 +406,48 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
     }
 };
 
+/**
+ * Ids of the stories shown on this page: the story being read, or every story in a list.
+ * @returns {string[]}
+ */
+const pageStoryIds = () => {
+    const ids = new Set();
+    const current = STORY_URL_RE.exec(location.href)?.[1];
+    if (current) ids.add(current);
+    const lists = document.querySelectorAll('.z-list');
+    for (let i = 0; i < lists.length; i++) {
+        const anchor = qs('a', lists[i]);
+        const storyId = anchor && STORY_URL_RE.exec(anchor.href)?.[1];
+        if (storyId) ids.add(storyId);
+    }
+    return [...ids];
+};
+
+/**
+ * Reads the settings and the bookmarks of the stories on this page straight from storage.
+ * This skips waking the background script (it sleeps after ~30 s) and copying the whole
+ * library into every page, which gets slow on phones and tablets with a big library.
+ * @returns {Promise<[Object, Object]>} The settings and the bookmarks, by story id.
+ */
+const loadInfoAndDir = () => {
+    const ids = pageStoryIds();
+    return Promise.all([
+        chrome.storage.sync.get('settings')
+            .then((result) => result.settings || {})
+            .catch((error) => {
+                console.error('Failed to load settings:', error);
+                return {};
+            }),
+        (ids.length ? chrome.storage.local.get(ids) : Promise.resolve({}))
+            .catch((error) => {
+                console.error('Failed to load bookmarks for this page:', error);
+                return {};
+            }),
+    ]);
+};
+
 const main = async () => {
-    const [info, dir] = await Promise.all([sendMsg({ message: 'get-info' }), sendMsg({ message: 'get-dir' })]);
+    const [info, dir] = await loadInfoAndDir();
     try {
         info.adblock && document.querySelectorAll('.adsbygoogle').forEach(e => e.remove());
 
@@ -496,6 +564,7 @@ const main = async () => {
                 const storyId = hrefMatch && hrefMatch[1];
                 const storyEntry = storyId ? dir[storyId] : undefined;
                 if (storyEntry?.chapter) {
+                    showLastRead(info, el, storyId, storyEntry.chapter);
                     const ch = toNum(qs('.chaptersvalue', el)?.textContent, 1);
                     if (storyEntry.chapters !== ch) {
                         storyEntry.chapters = ch;
@@ -532,6 +601,7 @@ const main = async () => {
             }
 
             createStory(info, dir, id, chapters, selects, texts, follow);
+            showLastRead(info, qs('#profile_top'), id, dir[id]?.chapter);
             
             if (info.entireWork && selects[0]) {
                 const btn = mkEl('button', {
@@ -583,7 +653,10 @@ const main = async () => {
                 follow.after(btn);
             }
 
-            if (info.bookmarks && info.autoSave && (dirEntry?.chapter || 0) < chapter) {
+            // A bookmarked story only moves forward one chapter at a time (2 -> 3, never 1 -> 40),
+            // so opening a later chapter to look ahead doesn't lose your place
+            const savedChapter = dirEntry?.chapter || 0;
+            if (info.bookmarks && info.autoSave && (savedChapter === 0 || chapter === savedChapter + 1)) {
                 document.getElementById(`bookmark${chapter}`)?.click();
             }
 
