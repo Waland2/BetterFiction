@@ -204,6 +204,32 @@ const betterDescription = (info, el) => {
     }
 };
 
+/**
+ * Shows "Last read: N" in a story's details, right after the word count, as a link to that chapter.
+ * Called again whenever the bookmark moves; an old link is replaced and no chapter removes it.
+ * @param {Object} info - Extension settings.
+ * @param {Element} el - The story's container (#profile_top or a .z-list item).
+ * @param {string} storyId - FanFiction.net story id.
+ * @param {number} [chapter] - The bookmarked chapter.
+ */
+const showLastRead = (info, el, storyId, chapter) => {
+    const desc = qs('.xgray', el);
+    if (!desc) return;
+    qs('.bf-lastread', desc)?.remove();
+    if (!info.lastRead || !chapter) return;
+    const link = mkEl('a', {
+        href: `https://www.fanfiction.net/s/${storyId}/${chapter}/`,
+        textContent: `Last read: ${chapter}`,
+        title: `Go to chapter ${chapter}`,
+    });
+    link.style.fontWeight = '600';
+    const item = mkEl('span', { className: 'bf-lastread' });
+    item.append(' - ', link);
+    const words = qs('.wordsmeta', desc) || qs('.chaptersmeta', desc);
+    if (words) words.after(item);
+    else desc.append(item);
+};
+
 const getBookmarkColor = (info, dir, id, ch, c) => {
     const entry = dir[id];
     if (!info.organizer) return '#096dd9';
@@ -297,6 +323,7 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
                         if (orgSelector) orgSelector.style.display = 'none';
                         delete dir[id];
                         sendMsg({ message: 'del-bookmark', id });
+                        showLastRead(info, qs('#profile_top'), id);
                         return;
                     }
                     document.getElementById(`bookmark${dirEntry?.chapter || 0}`)?.click();
@@ -307,6 +334,7 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
                     if (orgSelector) orgSelector.style.display = '';
                     bm.message = 'set-bookmark';
                     sendMsg(bm);
+                    showLastRead(info, qs('#profile_top'), id, ch);
                 }
             });
             sep.children[1]?.after(btn);
@@ -430,6 +458,7 @@ const main = async () => {
                 const storyId = hrefMatch && hrefMatch[1];
                 const storyEntry = storyId ? dir[storyId] : undefined;
                 if (storyEntry?.chapter) {
+                    showLastRead(info, el, storyId, storyEntry.chapter);
                     const ch = toNum(qs('.chaptersvalue', el)?.textContent, 1);
                     if (storyEntry.chapters !== ch) {
                         storyEntry.chapters = ch;
@@ -466,6 +495,7 @@ const main = async () => {
             }
 
             createStory(info, dir, id, chapters, selects, texts, follow);
+            showLastRead(info, qs('#profile_top'), id, dir[id]?.chapter);
             
             if (info.entireWork && selects[0]) {
                 const btn = mkEl('button', {
@@ -517,7 +547,10 @@ const main = async () => {
                 follow.after(btn);
             }
 
-            if (info.bookmarks && info.autoSave && (dirEntry?.chapter || 0) < chapter) {
+            // A bookmarked story only moves forward one chapter at a time (2 -> 3, never 1 -> 40),
+            // so opening a later chapter to look ahead doesn't lose your place
+            const savedChapter = dirEntry?.chapter || 0;
+            if (info.bookmarks && info.autoSave && (savedChapter === 0 || chapter === savedChapter + 1)) {
                 document.getElementById(`bookmark${chapter}`)?.click();
             }
 
