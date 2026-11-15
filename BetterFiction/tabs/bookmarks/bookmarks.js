@@ -1,6 +1,10 @@
 const STATUSES = ['Automatic', 'Planned', 'Reading', 'Completed', 'Dropped'];
 
 const listEl = document.getElementById('list');
+const tableWrapEl = document.getElementById('table-wrap');
+const rowsEl = document.getElementById('rows');
+const sortHeaders = document.querySelectorAll('th[data-sort-type]');
+const viewButtons = document.querySelectorAll('.view-switch .view');
 const emptyEl = document.getElementById('empty');
 const countEl = document.getElementById('count');
 const searchEl = document.getElementById('search');
@@ -18,6 +22,25 @@ const addTimeMs = new WeakMap();
 const searchText = new WeakMap();
 /** The last removed bookmark, kept so it can be restored with Undo. */
 let lastRemoved = null;
+/** Current order: what to sort by, and 1 (ascending) or -1 (descending). Oldest first, as before. */
+let sortType = 'addTime';
+let sortDir = 1;
+
+const VIEW_KEY = 'betterfiction-bookmarks-view';
+/**
+ * The layout to use: the one chosen on this device, or cards on small screens and the table elsewhere.
+ * @returns {'table'|'cards'}
+ */
+const savedView = () => {
+    try {
+        const view = localStorage.getItem(VIEW_KEY);
+        if (view === 'table' || view === 'cards') return view;
+    } catch (error) {
+        // storage blocked: use the default
+    }
+    return window.matchMedia('(max-width: 700px)').matches ? 'cards' : 'table';
+};
+let view = savedView();
 
 /**
  * The status to show: "Automatic" is worked out from the reading progress.
@@ -55,13 +78,109 @@ const stored = (bookmark) => {
     return rest;
 };
 
-const SORTS = {
-    newest: (a, b) => (addTimeMs.get(b) ?? -Infinity) - (addTimeMs.get(a) ?? -Infinity),
-    oldest: (a, b) => (addTimeMs.get(a) ?? Infinity) - (addTimeMs.get(b) ?? Infinity),
-    storyName: (a, b) => String(a.storyName || '').localeCompare(String(b.storyName || '')),
-    author: (a, b) => String(a.author || '').localeCompare(String(b.author || '')),
-    fandom: (a, b) => String(a.fandom || '').localeCompare(String(b.fandom || '')),
-    progress: (a, b) => (b.chapter / (b.chapters || b.chapter)) - (a.chapter / (a.chapters || a.chapter)),
+/** Sort menu choices, as [what to sort by, direction]. */
+const SORT_CHOICES = {
+    newest: ['addTime', -1],
+    oldest: ['addTime', 1],
+    storyName: ['storyName', 1],
+    author: ['author', 1],
+    fandom: ['fandom', 1],
+    progress: ['progress', -1],
+};
+
+/** The value each bookmark is sorted by. */
+const SORT_KEYS = {
+    addTime: (b) => addTimeMs.get(b) ?? Infinity,
+    id: (b) => Number(b.id) || 0,
+    chapter: (b) => Number(b.chapter) || 0,
+    progress: (b) => (Number(b.chapter) || 0) / (Number(b.chapters) || Number(b.chapter) || 1),
+    status: (b) => findStatus(b),
+};
+
+/**
+ * Sorts bookmarks by the current order.
+ * @param {Object[]} list
+ */
+const sortList = (list) => {
+    const getKey = SORT_KEYS[sortType] || ((b) => String(b[sortType] || '').toLowerCase());
+    const keyed = list.map((b) => ({ b, k: getKey(b) }));
+    keyed.sort((x, y) => ((x.k > y.k) - (x.k < y.k)) * sortDir);
+    keyed.forEach((item, i) => { list[i] = item.b; });
+};
+
+/**
+ * Shows the current order in the table headers and the sort menu.
+ */
+const showSortState = () => {
+    sortHeaders.forEach((header) => {
+        const on = header.dataset.sortType === sortType;
+        header.classList.toggle('active', on);
+        header.classList.toggle('descending', on && sortDir === -1);
+        header.setAttribute('aria-sort', on ? (sortDir === 1 ? 'ascending' : 'descending') : 'none');
+    });
+    const choice = Object.keys(SORT_CHOICES)
+        .find((key) => SORT_CHOICES[key][0] === sortType && SORT_CHOICES[key][1] === sortDir);
+    sortEl.value = choice || '';
+};
+
+const ROW_TEMPLATE = (() => {
+    const tr = document.createElement('tr');
+    tr.className = 'table-row';
+    for (let i = 0; i < 8; i++) tr.appendChild(document.createElement('td'));
+    tr.children[1].appendChild(document.createElement('a'));
+    tr.children[5].className = 'status-cell';
+    tr.children[5].appendChild(Object.assign(document.createElement('span'), { className: 'status-badge' }));
+    const options = tr.children[7];
+    options.className = 'options-cell';
+    options.append(
+        Object.assign(document.createElement('button'), { type: 'button', className: 'link-button change-link', textContent: 'Change status' }),
+        Object.assign(document.createElement('span'), { className: 'sep', textContent: ' | ' }),
+        Object.assign(document.createElement('button'), { type: 'button', className: 'link-button delete-link', textContent: 'Delete' }),
+    );
+    return tr;
+})();
+
+/**
+ * Builds the table row for one bookmark (the same columns as before).
+ * @param {Object} bookmark
+ * @returns {HTMLTableRowElement}
+ */
+const createRow = (bookmark) => {
+    const row = ROW_TEMPLATE.cloneNode(true);
+    const cells = row.children;
+    cells[0].textContent = bookmark.id;
+    const link = cells[1].firstChild;
+    link.href = `https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}`;
+    link.textContent = bookmark.storyName;
+    cells[2].textContent = `${bookmark.chapter}/${bookmark.chapters || '?'}`;
+    cells[3].textContent = bookmark.fandom || '';
+    cells[4].textContent = bookmark.author || '';
+    const badge = cells[5].firstChild;
+    const status = findStatus(bookmark);
+    badge.className = `status-badge ${status}`;
+    badge.textContent = status;
+    cells[6].textContent = bookmark.displayDate;
+
+    const change = row.querySelector('.change-link');
+    change.addEventListener('click', () => {
+        change.hidden = true;
+        const select = Object.assign(document.createElement('select'), { className: 'status-select' });
+        select.setAttribute('aria-label', 'Status');
+        STATUSES.forEach((value) => select.append(new Option(value, value)));
+        select.value = STATUSES.includes(bookmark.status) ? bookmark.status : 'Automatic';
+        change.after(select);
+        select.focus();
+        select.addEventListener('change', () => {
+            bookmark.status = select.value;
+            chrome.storage.local.set({ [bookmark.id]: stored(bookmark) })
+                .catch((error) => {
+                    console.error(`Failed to update status for story ${bookmark.id}:`, error);
+                });
+            render();
+        });
+    });
+    row.querySelector('.delete-link').addEventListener('click', () => removeBookmark(bookmark));
+    return row;
 };
 
 const CARD_TEMPLATE = (() => {
@@ -152,11 +271,17 @@ const render = () => {
         if (bookmark.status === 'Automatic') counts.Automatic++;
         if (matchesStatus(bookmark, activeStatus)) shown.push(bookmark);
     }
-    shown.sort(SORTS[sortEl.value] || SORTS.newest);
+    sortList(shown);
 
     const fragment = document.createDocumentFragment();
-    shown.forEach((bookmark) => fragment.appendChild(createCard(bookmark)));
-    listEl.replaceChildren(fragment);
+    const create = view === 'table' ? createRow : createCard;
+    shown.forEach((bookmark) => fragment.appendChild(create(bookmark)));
+    (view === 'table' ? rowsEl : listEl).replaceChildren(fragment);
+    (view === 'table' ? listEl : rowsEl).replaceChildren();
+    tableWrapEl.hidden = view !== 'table' || shown.length === 0;
+    listEl.hidden = view !== 'cards';
+    viewButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
+    showSortState();
 
     filterButtons.forEach((button) => {
         button.querySelector('span').textContent = counts[button.dataset.status];
@@ -275,7 +400,33 @@ Promise.all([settingsPromise, chrome.storage.local.get()])
     });
 
 searchEl.addEventListener('input', render);
-sortEl.addEventListener('change', render);
+sortEl.addEventListener('change', () => {
+    [sortType, sortDir] = SORT_CHOICES[sortEl.value] || SORT_CHOICES.oldest;
+    render();
+});
+
+// Clicking a table header sorts by that column; clicking it again reverses the order
+sortHeaders.forEach((header) => {
+    header.addEventListener('click', () => {
+        const type = header.dataset.sortType;
+        sortDir = type === sortType ? -sortDir : 1;
+        sortType = type;
+        render();
+    });
+});
+
+// Table or cards; the choice is remembered on this device
+viewButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        view = button.dataset.view;
+        try {
+            localStorage.setItem(VIEW_KEY, view);
+        } catch (error) {
+            // storage blocked: the choice lasts until the page is closed
+        }
+        render();
+    });
+});
 
 filterButtons.forEach((button) => {
     button.addEventListener('click', () => {

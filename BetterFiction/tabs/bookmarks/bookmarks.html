@@ -38,15 +38,21 @@
                 <button type="button" class="filter" data-status="Dropped" aria-pressed="false">Dropped <span></span></button>
             </div>
 
+            <div class="view-switch" role="group" aria-label="Layout">
+                <button type="button" class="view" data-view="table" aria-pressed="true">Table</button>
+                <button type="button" class="view" data-view="cards" aria-pressed="false">Cards</button>
+            </div>
+
             <label class="sort">
                 <span>Sort</span>
                 <select id="sort">
-                    <option value="newest">Newest first</option>
                     <option value="oldest">Oldest first</option>
+                    <option value="newest">Newest first</option>
                     <option value="storyName">Title</option>
                     <option value="author">Author</option>
                     <option value="fandom">Fandom</option>
                     <option value="progress">Progress</option>
+                    <option value="" hidden>Table column</option>
                 </select>
             </label>
         </div>
@@ -56,7 +62,25 @@
             <button type="button" class="link-button" id="undo">Undo</button>
         </p>
 
-        <ul class="list" id="list"></ul>
+        <div class="table-wrap" id="table-wrap">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col" data-sort-type="id">ID</th>
+                        <th scope="col" data-sort-type="storyName">Name</th>
+                        <th scope="col" data-sort-type="chapter">Chapter</th>
+                        <th scope="col" data-sort-type="fandom">Fandom</th>
+                        <th scope="col" data-sort-type="author">Author</th>
+                        <th scope="col" data-sort-type="status" class="status-col">Status</th>
+                        <th scope="col" data-sort-type="addTime">Time</th>
+                        <th scope="col" class="options-col">Options</th>
+                    </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+            </table>
+        </div>
+
+        <ul class="list" id="list" hidden></ul>
         <p class="empty" id="empty" hidden></p>
     </main>
 
