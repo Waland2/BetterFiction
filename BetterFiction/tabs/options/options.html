@@ -16,13 +16,19 @@
                 <h1>BetterFiction</h1>
                 <p>Settings are saved as soon as you change them.</p>
             </div>
-            <a class="button" href="../bookmarks/bookmarks.html" title="Open your bookmarks">Bookmarks</a>
+            <div class="header-tools">
+                <div class="view-switch" role="group" aria-label="Layout">
+                    <button type="button" class="view" data-view="compact" aria-pressed="true">Compact</button>
+                    <button type="button" class="view" data-view="detailed" aria-pressed="false">Detailed</button>
+                </div>
+                <a class="button" href="../bookmarks/bookmarks.html" title="Open your bookmarks">Bookmarks</a>
+            </div>
         </header>
 
         <section aria-labelledby="section-appearance">
             <h2 id="section-appearance">Appearance</h2>
             <div class="panel">
-                <label class="row" for="darkMode">
+                <label class="row" title="Gives FanFiction.net a dark grey background with light text, on every page. Story details keep their colours, lightened to stay readable." for="darkMode">
                     <span class="text">
                         <span class="name">Dark mode</span>
                         <span class="desc">Gives FanFiction.net a dark grey background with light text, on every page. Story details keep their colours, lightened to stay readable.</span>
@@ -35,28 +41,28 @@
         <section aria-labelledby="section-0">
             <h2 id="section-0">Bookmarks</h2>
             <div class="panel">
-                <label class="row" for="bookmarks">
+                <label class="row" title="Adds a bookmark button to each chapter, so you can save your place and come back to it." for="bookmarks">
                     <span class="text">
                         <span class="name">Bookmarks</span>
                         <span class="desc">Adds a bookmark button to each chapter, so you can save your place and come back to it.</span>
                     </span>
                     <input type="checkbox" class="switch" id="bookmarks" />
                 </label>
-                <label class="row" for="autoSave">
+                <label class="row" title="Moves your bookmark forward when you open a later chapter of a story." for="autoSave">
                     <span class="text">
                         <span class="name">Bookmark automatically</span>
                         <span class="desc">Moves your bookmark forward when you open a later chapter of a story.</span>
                     </span>
                     <input type="checkbox" class="switch" id="autoSave" />
                 </label>
-                <label class="row" for="markBookmarks">
+                <label class="row" title="Highlights stories you&#x27;ve bookmarked in search results and story lists." for="markBookmarks">
                     <span class="text">
                         <span class="name">Mark bookmarked stories</span>
                         <span class="desc">Highlights stories you&#x27;ve bookmarked in search results and story lists.</span>
                     </span>
                     <input type="checkbox" class="switch" id="markBookmarks" />
                 </label>
-                <label class="row" for="organizer">
+                <label class="row" title="Lets you set a status for each bookmarked story (Automatic, Planned, Reading, Completed or Dropped), shown by the bookmark&#x27;s colour." for="organizer">
                     <span class="text">
                         <span class="name">Reading status</span>
                         <span class="desc">Lets you set a status for each bookmarked story (Automatic, Planned, Reading, Completed or Dropped), shown by the bookmark&#x27;s colour.</span>
@@ -69,28 +75,28 @@
         <section aria-labelledby="section-1">
             <h2 id="section-1">Reading a story</h2>
             <div class="panel">
-                <label class="row" for="entireWork">
+                <label class="row" title="Adds a button that loads every chapter onto one page." for="entireWork">
                     <span class="text">
                         <span class="name">Entire work button</span>
                         <span class="desc">Adds a button that loads every chapter onto one page.</span>
                     </span>
                     <input type="checkbox" class="switch" id="entireWork" />
                 </label>
-                <label class="row" for="wordCounter">
+                <label class="row" title="Shows each chapter&#x27;s word count in the chapter menu." for="wordCounter">
                     <span class="text">
                         <span class="name">Words per chapter</span>
                         <span class="desc">Shows each chapter&#x27;s word count in the chapter menu.</span>
                     </span>
                     <input type="checkbox" class="switch" id="wordCounter" />
                 </label>
-                <label class="row" for="copy">
+                <label class="row" title="Lets you select and copy story text." for="copy">
                     <span class="text">
                         <span class="name">Allow copying text</span>
                         <span class="desc">Lets you select and copy story text.</span>
                     </span>
                     <input type="checkbox" class="switch" id="copy" />
                 </label>
-                <label class="row" for="adblock">
+                <label class="row" title="Removes ads from pages." for="adblock">
                     <span class="text">
                         <span class="name">Block ads</span>
                         <span class="desc">Removes ads from pages.</span>
@@ -103,14 +109,14 @@
         <section aria-labelledby="section-2">
             <h2 id="section-2">Story details and lists</h2>
             <div class="panel">
-                <label class="row" for="groupDescriptions">
+                <label class="row" title="Puts rating, word count, dates and characters on their own lines, so they&#x27;re easier to read." for="groupDescriptions">
                     <span class="text">
                         <span class="name">Group story details</span>
                         <span class="desc">Puts rating, word count, dates and characters on their own lines, so they&#x27;re easier to read.</span>
                     </span>
                     <input type="checkbox" class="switch" id="groupDescriptions" />
                 </label>
-                <label class="row" for="styleDescriptions">
+                <label class="row" title="Colours the rating, language, genre and status so they stand out." for="styleDescriptions">
                     <span class="text">
                         <span class="name">Colour story details</span>
                         <span class="desc">Colours the rating, language, genre and status so they stand out.</span>
@@ -130,21 +136,21 @@
                     <p class="date-format-preview">Preview: <span id="dateFormatPreview"></span></p>
                     <p id="dateFormatError" class="date-format-error" role="alert" hidden></p>
                 </div>
-                <label class="row" for="bigCovers">
+                <label class="row" title="Shows bigger cover images in story lists." for="bigCovers">
                     <span class="text">
                         <span class="name">Larger covers</span>
                         <span class="desc">Shows bigger cover images in story lists.</span>
                     </span>
                     <input type="checkbox" class="switch" id="bigCovers" />
                 </label>
-                <label class="row" for="separateFics">
+                <label class="row" title="Draws a border around each story in lists." for="separateFics">
                     <span class="text">
                         <span class="name">Separate stories</span>
                         <span class="desc">Draws a border around each story in lists.</span>
                     </span>
                     <input type="checkbox" class="switch" id="separateFics" />
                 </label>
-                <label class="row" for="profileSorts">
+                <label class="row" title="Adds sorting by Follows and Favs to the story lists on author profiles." for="profileSorts">
                     <span class="text">
                         <span class="name">More sorting on profiles</span>
                         <span class="desc">Adds sorting by Follows and Favs to the story lists on author profiles.</span>
@@ -157,7 +163,7 @@
         <section aria-labelledby="section-3">
             <h2 id="section-3">Top bar</h2>
             <div class="panel">
-                <label class="row" for="shortcuts">
+                <label class="row" title="Adds icons for your favourite and followed stories to the top bar." for="shortcuts">
                     <span class="text">
                         <span class="name">Quick links</span>
                         <span class="desc">Adds icons for your favourite and followed stories to the top bar.</span>

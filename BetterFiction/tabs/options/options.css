@@ -47,9 +47,57 @@ header img {
     border-radius: 10px;
 }
 
-/* Button to the bookmarks page, on the right of the header */
-.button {
+/* Layout switch and the button to the bookmarks page, on the right of the header */
+header {
+    flex-wrap: wrap;
+}
+
+/* Title next to the logo; the buttons move to their own line when there isn't room */
+header > div:not(.header-tools) {
+    flex: 1 1 220px;
+    min-width: 0;
+}
+
+.header-tools {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
     margin-left: auto;
+}
+
+.view-switch {
+    display: flex;
+    border: 1px solid #4a4a4a;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.view {
+    padding: 7px 12px;
+    border: none;
+    background-color: var(--panel);
+    color: var(--text);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.view + .view {
+    border-left: 1px solid #4a4a4a;
+}
+
+.view[aria-pressed='true'] {
+    background-color: var(--accent);
+    font-weight: 700;
+}
+
+.view:focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: -2px;
+}
+
+.button {
     padding: 8px 14px;
     border: 1px solid #4a4a4a;
     border-radius: 6px;
@@ -264,4 +312,81 @@ footer a:hover {
     .switch::after {
         transition: none;
     }
+}
+
+/* Compact layout (the desktop default): one short line per setting with a checkbox, like the
+   original page. The explanation is shown when you point at a setting. */
+.compact main {
+    max-width: 560px;
+}
+
+.compact section {
+    margin-top: 16px;
+}
+
+.compact .row {
+    gap: 8px;
+    padding: 6px 14px;
+}
+
+.compact .row + .row {
+    border-top: none;
+}
+
+.compact .row .desc {
+    display: none;
+}
+
+.compact .row .name {
+    font-weight: 400;
+}
+
+.compact .row .text {
+    order: 2;
+}
+
+.compact .switch {
+    order: 1;
+    width: 16px;
+    height: 16px;
+    border: 1px solid #bbc1e1;
+    border-radius: 4px;
+    background-color: #ffffff;
+}
+
+.compact .switch::after {
+    top: 2px;
+    left: 5px;
+    width: 3px;
+    height: 7px;
+    border: 2px solid #ffffff;
+    border-top: 0;
+    border-left: 0;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    opacity: 0;
+    transform: rotate(43deg);
+}
+
+.compact .switch:checked {
+    border-color: var(--accent);
+    background-color: var(--accent);
+}
+
+.compact .switch:checked::after {
+    opacity: 1;
+    transform: rotate(43deg);
+}
+
+.compact .row:hover .switch:checked {
+    border-color: var(--accent-hover);
+}
+
+.compact .row.field .desc {
+    display: block;
+}
+
+.compact .row.field {
+    padding: 10px 14px;
 }

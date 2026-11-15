@@ -3,6 +3,35 @@ setupSelects();
 
 document.getElementById('version').textContent = chrome.runtime.getManifest().version;
 
+// Compact or detailed layout: compact by default on desktop, detailed on small screens.
+// The choice is remembered on this device.
+const VIEW_KEY = 'betterfiction-settings-view';
+const viewButtons = document.querySelectorAll('.view-switch .view');
+const showView = (view) => {
+    document.body.classList.toggle('compact', view === 'compact');
+    viewButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
+};
+let savedView = null;
+try {
+    savedView = localStorage.getItem(VIEW_KEY);
+} catch (error) {
+    // storage blocked: use the default
+}
+if (savedView !== 'compact' && savedView !== 'detailed') {
+    savedView = window.matchMedia('(max-width: 700px)').matches ? 'detailed' : 'compact';
+}
+showView(savedView);
+viewButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        showView(button.dataset.view);
+        try {
+            localStorage.setItem(VIEW_KEY, button.dataset.view);
+        } catch (error) {
+            // storage blocked: the choice lasts until the page is closed
+        }
+    });
+});
+
 const dateInput = document.getElementById('dateFormat');
 const previewEl = document.getElementById('dateFormatPreview');
 const errorEl = document.getElementById('dateFormatError');
