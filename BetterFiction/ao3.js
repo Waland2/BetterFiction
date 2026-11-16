@@ -189,10 +189,12 @@
         nav.append(bookmarkLi, goLi, statusLi);
         render();
 
-        // Auto-save only moves a bookmark you already have, one chapter at a time (2 -> 3, never 1 -> 40).
-        // Opening a work never bookmarks it by itself.
+        // "Bookmark new stories automatically": a work without a bookmark is bookmarked here.
+        // "Bookmark follows your reading": a bookmark you have moves forward one chapter at a time (2 -> 3, never 1 -> 40).
         const savedChapter = dir[k]?.chapter || 0;
-        if (info.autoSave && savedChapter && chapter === savedChapter + 1) save();
+        const bookmarkNew = info.autoBookmarkNew && savedChapter === 0;
+        const followReading = info.autoSave && savedChapter && chapter === savedChapter + 1;
+        if (bookmarkNew || followReading) save();
     };
 
     const STYLE = `
