@@ -198,7 +198,8 @@ const betterDescription = (info, el) => {
     if (info.styleDescriptions) {
         let resolved = null;
         const applyColors = () => {
-            const dark = storyContrast?.parentElement?.style.backgroundColor === 'rgb(51, 51, 51)';
+            const darkMode = document.documentElement.classList.contains('bf-dark');
+            const dark = darkMode || storyContrast?.parentElement?.style.backgroundColor === 'rgb(51, 51, 51)';
             if (!resolved) {
                 resolved = [];
                 const aceLen = APPLY_COLOR_ENTRIES.length;
@@ -220,21 +221,25 @@ const betterDescription = (info, el) => {
             for (let i = 0; i < rlen; i++) {
                 const [targets, color, colorIsObj] = resolved[i];
                 const tlen = targets.length;
+                // "important" so BetterFiction's dark mode (which sets all text light) keeps these colours
+                const priority = darkMode ? 'important' : '';
                 if (!colorIsObj) {
                     const c = dark ? invertColor(color) : color;
-                    for (let j = 0; j < tlen; j++) targets[j].style.color = c;
+                    for (let j = 0; j < tlen; j++) targets[j].style.setProperty('color', c, priority);
                     continue;
                 }
                 for (let j = 0; j < tlen; j++) {
                     const span = targets[j];
                     const c = color[span.textContent] || color;
                     if (typeof c !== 'string') continue;
-                    span.style.color = dark ? invertColor(c) : c;
+                    span.style.setProperty('color', dark ? invertColor(c) : c, priority);
                 }
             }
         };
         applyColors();
         if (storyContrast) storyContrast.onclick = applyColors;
+        // Recolour when dark mode is switched on or off
+        new MutationObserver(applyColors).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
     }
 };
 

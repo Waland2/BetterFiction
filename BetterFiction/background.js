@@ -12,6 +12,7 @@ const primaryFunctions = [
     'groupDescriptions',
     'styleDescriptions',
     'dateFormat',
+    'darkMode',
 ];
 
 /**
