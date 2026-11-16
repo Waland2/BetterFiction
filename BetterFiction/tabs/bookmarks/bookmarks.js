@@ -1,135 +1,336 @@
-const tableBody = document.querySelector('tbody');
-const bookmarkLinks = [];
-const bookmarkForRow = new WeakMap();
+const STATUSES = ['Automatic', 'Planned', 'Reading', 'Completed', 'Dropped'];
 
-const SELECT_TEMPLATE = (() => {
-    const s = document.createElement('select');
-    s.className = 'status-select';
-    s.innerHTML =
-        '<option value="Automatic">Automatic</option>' +
-        '<option value="Planned">Planned</option>' +
-        '<option value="Reading">Reading</option>' +
-        '<option value="Completed">Completed</option>' +
-        '<option value="Dropped">Dropped</option>';
-    return s;
-})();
+const listEl = document.getElementById('list');
+const tableWrapEl = document.getElementById('table-wrap');
+const rowsEl = document.getElementById('rows');
+const sortHeaders = document.querySelectorAll('th[data-sort-type]');
+const viewButtons = document.querySelectorAll('.view-switch .view');
+const emptyEl = document.getElementById('empty');
+const countEl = document.getElementById('count');
+const searchEl = document.getElementById('search');
+const sortEl = document.getElementById('sort');
+const filterButtons = document.querySelectorAll('#filters .filter');
+const noticeEl = document.getElementById('notice');
+const noticeTextEl = document.getElementById('notice-text');
+const undoEl = document.getElementById('undo');
 
+/** All bookmarks shown on the page. */
+let bookmarks = [];
+let showStatus = true;
+let activeStatus = 'All';
 const addTimeMs = new WeakMap();
+const searchText = new WeakMap();
+/** The last removed bookmark, kept so it can be restored with Undo. */
+let lastRemoved = null;
+/** Current order: what to sort by, and 1 (ascending) or -1 (descending). Oldest first, as before. */
+let sortType = 'addTime';
+let sortDir = 1;
 
-function sortBookmarks(bookmarks, type, dir) {
-    const getKey = type === 'addTime'
-        ? (b => addTimeMs.get(b) ?? Infinity)
-        : type === 'chapter'
-            ? (b => +b.chapter)
-            : (b => b[type]);
-
-    const n = bookmarks.length;
-    const keyed = new Array(n);
-    for (let i = 0; i < n; i++) keyed[i] = { b: bookmarks[i], k: getKey(bookmarks[i]) };
-    keyed.sort((a, b) => ((a.k > b.k) - (a.k < b.k)) * dir);
-    for (let i = 0; i < n; i++) bookmarks[i] = keyed[i].b;
-}
-
-const clearRange = document.createRange();
-function renderBookmarks(bookmarks) {
-    const first = tableBody.firstChild;
-    if (first && tableBody.lastChild !== first) {
-        clearRange.setStartAfter(first);
-        clearRange.setEndAfter(tableBody.lastChild);
-        clearRange.deleteContents();
+const VIEW_KEY = 'betterfiction-bookmarks-view';
+/**
+ * The layout to use: the one chosen on this device, or cards on small screens and the table elsewhere.
+ * @returns {'table'|'cards'}
+ */
+const savedView = () => {
+    try {
+        const view = localStorage.getItem(VIEW_KEY);
+        if (view === 'table' || view === 'cards') return view;
+    } catch (error) {
+        // storage blocked: use the default
     }
-    const fragment = document.createDocumentFragment();
-    const n = bookmarks.length;
-    for (let i = 0; i < n; i++) fragment.appendChild(createBookmarkRow(bookmarks[i]));
-    tableBody.appendChild(fragment);
-}
+    return window.matchMedia('(max-width: 700px)').matches ? 'cards' : 'table';
+};
+let view = savedView();
 
-function findStatus(bookmark) {
+/**
+ * The status to show: "Automatic" is worked out from the reading progress.
+ * @param {Object} bookmark
+ * @returns {string}
+ */
+const findStatus = (bookmark) => {
     if (bookmark.status === 'Automatic') {
         if (bookmark.chapter === bookmark.chapters) return 'Completed';
         if (bookmark.chapter === 1) return 'Planned';
         return 'Reading';
     }
     return bookmark.status;
-}
+};
+
+/**
+ * Whether a bookmark belongs under a status filter ("Automatic" means the setting itself).
+ * @param {Object} bookmark
+ * @param {string} status
+ * @returns {boolean}
+ */
+const matchesStatus = (bookmark, status) => {
+    if (status === 'All') return true;
+    if (status === 'Automatic') return bookmark.status === 'Automatic';
+    return findStatus(bookmark) === status;
+};
+
+/**
+ * The bookmark as it is stored (without the values only used on this page).
+ * @param {Object} bookmark
+ * @returns {Object}
+ */
+const stored = (bookmark) => {
+    const { displayDate, ...rest } = bookmark;
+    return rest;
+};
+
+/** Sort menu choices, as [what to sort by, direction]. */
+const SORT_CHOICES = {
+    newest: ['addTime', -1],
+    oldest: ['addTime', 1],
+    storyName: ['storyName', 1],
+    author: ['author', 1],
+    fandom: ['fandom', 1],
+    progress: ['progress', -1],
+};
+
+/** The value each bookmark is sorted by. */
+const SORT_KEYS = {
+    addTime: (b) => addTimeMs.get(b) ?? Infinity,
+    id: (b) => Number(b.id) || 0,
+    chapter: (b) => Number(b.chapter) || 0,
+    progress: (b) => (Number(b.chapter) || 0) / (Number(b.chapters) || Number(b.chapter) || 1),
+    status: (b) => findStatus(b),
+};
+
+/**
+ * Sorts bookmarks by the current order.
+ * @param {Object[]} list
+ */
+const sortList = (list) => {
+    const getKey = SORT_KEYS[sortType] || ((b) => String(b[sortType] || '').toLowerCase());
+    const keyed = list.map((b) => ({ b, k: getKey(b) }));
+    keyed.sort((x, y) => ((x.k > y.k) - (x.k < y.k)) * sortDir);
+    keyed.forEach((item, i) => { list[i] = item.b; });
+};
+
+/**
+ * Shows the current order in the table headers and the sort menu.
+ */
+const showSortState = () => {
+    sortHeaders.forEach((header) => {
+        const on = header.dataset.sortType === sortType;
+        header.classList.toggle('active', on);
+        header.classList.toggle('descending', on && sortDir === -1);
+        header.setAttribute('aria-sort', on ? (sortDir === 1 ? 'ascending' : 'descending') : 'none');
+    });
+    const choice = Object.keys(SORT_CHOICES)
+        .find((key) => SORT_CHOICES[key][0] === sortType && SORT_CHOICES[key][1] === sortDir);
+    sortEl.value = choice || '';
+};
 
 const ROW_TEMPLATE = (() => {
     const tr = document.createElement('tr');
     tr.className = 'table-row';
-    tr.innerHTML =
-        '<td></td>' +
-        '<td><a></a></td>' +
-        '<td></td>' +
-        '<td></td>' +
-        '<td></td>' +
-        '<td class="status-cell"><span class="status-badge"></span></td>' +
-        '<td></td>' +
-        '<td class="options-cell">' +
-        '<a href="#" class="change-link">Change status</a>' +
-        '<span class="sep"> | </span>' +
-        '<a href="#" class="delete-link">Delete</a>' +
-        '</td>';
+    for (let i = 0; i < 8; i++) tr.appendChild(document.createElement('td'));
+    tr.children[1].appendChild(document.createElement('a'));
+    tr.children[5].className = 'status-cell';
+    tr.children[5].appendChild(Object.assign(document.createElement('span'), { className: 'status-badge' }));
+    const options = tr.children[7];
+    options.className = 'options-cell';
+    options.append(
+        Object.assign(document.createElement('button'), { type: 'button', className: 'link-button change-link', textContent: 'Change status' }),
+        Object.assign(document.createElement('span'), { className: 'sep', textContent: ' | ' }),
+        Object.assign(document.createElement('button'), { type: 'button', className: 'link-button delete-link', textContent: 'Delete' }),
+    );
     return tr;
 })();
 
-function applyStatusBadge(badge, statusValue) {
-    badge.className = `status-badge ${statusValue}`;
-    badge.textContent = statusValue;
-}
+/**
+ * Builds the table row for one bookmark (the same columns as before).
+ * @param {Object} bookmark
+ * @returns {HTMLTableRowElement}
+ */
+const createRow = (bookmark) => {
+    const row = ROW_TEMPLATE.cloneNode(true);
+    const cells = row.children;
+    cells[0].textContent = bookmark.id;
+    const link = cells[1].firstChild;
+    link.href = `https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}`;
+    link.textContent = bookmark.storyName;
+    cells[2].textContent = `${bookmark.chapter}/${bookmark.chapters || '?'}`;
+    cells[3].textContent = bookmark.fandom || '';
+    cells[4].textContent = bookmark.author || '';
+    const badge = cells[5].firstChild;
+    const status = findStatus(bookmark);
+    badge.className = `status-badge ${status}`;
+    badge.textContent = status;
+    cells[6].textContent = bookmark.displayDate;
 
-function createBookmarkRow(bookmark) {
-    const tableRow = ROW_TEMPLATE.cloneNode(true);
-    bookmarkForRow.set(tableRow, bookmark);
-    const tds = tableRow.children;
-    tds[0].textContent = bookmark.id;
-    const a = tds[1].firstChild;
-    a.href = `https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}`;
-    a.textContent = bookmark.storyName;
-    tds[2].textContent = `${bookmark.chapter}/${bookmark.chapters || '?'}`;
-    tds[3].textContent = bookmark.fandom;
-    tds[4].textContent = bookmark.author;
-    applyStatusBadge(tds[5].firstChild, findStatus(bookmark));
-    tds[6].textContent = bookmark.displayDate;
-    return tableRow;
-}
-
-tableBody.addEventListener('click', (e) => {
-    const target = e.target;
-    const row = target.closest('tr');
-    if (!row) return;
-    const bookmark = bookmarkForRow.get(row);
-    if (!bookmark) return;
-    const id = bookmark.id;
-
-    if (target.classList.contains('delete-link')) {
-        e.preventDefault();
-        chrome.storage.local.remove(id).catch(err =>
-            console.error(`Failed to delete bookmark for story ${id}:`, err)
-        );
-        bookmarkForRow.delete(row);
-        row.remove();
-    } else if (target.classList.contains('change-link')) {
-        e.preventDefault();
-        target.style.display = 'none';
-        const optionsCell = target.parentElement;
-        const sep = optionsCell.children[1];
-        const statusCell = row.children[5];
-
-        const select = SELECT_TEMPLATE.cloneNode(true);
-        select.value = bookmark.status;
-        optionsCell.insertBefore(select, sep);
-
+    const change = row.querySelector('.change-link');
+    change.addEventListener('click', () => {
+        change.hidden = true;
+        const select = Object.assign(document.createElement('select'), { className: 'status-select' });
+        select.setAttribute('aria-label', 'Status');
+        STATUSES.forEach((value) => select.append(new Option(value, value)));
+        select.value = STATUSES.includes(bookmark.status) ? bookmark.status : 'Automatic';
+        change.after(select);
+        select.focus();
         select.addEventListener('change', () => {
             bookmark.status = select.value;
-            applyStatusBadge(statusCell.firstChild, findStatus(bookmark));
-            chrome.storage.local.set({ [id]: bookmark }).catch(err =>
-                console.error(`Failed to update status for story ${id}:`, err)
-            );
-            select.remove();
-            target.style.display = '';
+            chrome.storage.local.set({ [bookmark.id]: stored(bookmark) })
+                .catch((error) => {
+                    console.error(`Failed to update status for story ${bookmark.id}:`, error);
+                });
+            render();
         });
+    });
+    row.querySelector('.delete-link').addEventListener('click', () => removeBookmark(bookmark));
+    return row;
+};
+
+const CARD_TEMPLATE = (() => {
+    const li = document.createElement('li');
+    li.className = 'entry';
+    const top = Object.assign(document.createElement('div'), { className: 'entry-top' });
+    const title = Object.assign(document.createElement('a'), { className: 'title' });
+    const badge = Object.assign(document.createElement('span'), { className: 'status-badge' });
+    top.append(title, badge);
+    const meta = Object.assign(document.createElement('p'), { className: 'meta' });
+    const progress = Object.assign(document.createElement('div'), { className: 'progress' });
+    const bar = Object.assign(document.createElement('div'), { className: 'bar' });
+    bar.appendChild(document.createElement('span'));
+    const progressText = Object.assign(document.createElement('span'), { className: 'progress-text' });
+    progress.append(bar, progressText);
+    const actions = Object.assign(document.createElement('div'), { className: 'actions' });
+    const cont = Object.assign(document.createElement('a'), { className: 'button continue' });
+    const statusLabel = Object.assign(document.createElement('label'), { className: 'status-label' });
+    const select = Object.assign(document.createElement('select'), { className: 'status-select' });
+    select.setAttribute('aria-label', 'Status');
+    STATUSES.forEach((status) => select.append(new Option(status, status)));
+    statusLabel.append('Status ', select);
+    const added = Object.assign(document.createElement('span'), { className: 'added' });
+    const remove = Object.assign(document.createElement('button'), {
+        type: 'button', className: 'link-button remove', textContent: 'Delete',
+    });
+    actions.append(cont, statusLabel, added, remove);
+    li.append(top, meta, progress, actions);
+    return li;
+})();
+
+/**
+ * Builds the card for one bookmark.
+ * @param {Object} bookmark
+ * @returns {HTMLLIElement}
+ */
+const createCard = (bookmark) => {
+    const card = CARD_TEMPLATE.cloneNode(true);
+    const link = `https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}`;
+    const title = card.querySelector('.title');
+    title.href = link;
+    title.textContent = bookmark.storyName;
+
+    const badge = card.querySelector('.status-badge');
+    const status = findStatus(bookmark);
+    badge.className = `status-badge ${status}`;
+    badge.textContent = status;
+
+    card.querySelector('.meta').textContent = [bookmark.author && `by ${bookmark.author}`, bookmark.fandom]
+        .filter(Boolean).join(' · ');
+
+    const chapters = Number(bookmark.chapters) || 0;
+    const percent = chapters ? Math.min(100, Math.round((bookmark.chapter / chapters) * 100)) : 0;
+    card.querySelector('.bar span').style.width = `${percent}%`;
+    card.querySelector('.progress-text').textContent = `Chapter ${bookmark.chapter} of ${chapters || '?'}`;
+
+    const cont = card.querySelector('.continue');
+    cont.href = link;
+    cont.textContent = `Continue at chapter ${bookmark.chapter}`;
+
+    const select = card.querySelector('.status-select');
+    select.value = STATUSES.includes(bookmark.status) ? bookmark.status : 'Automatic';
+    select.addEventListener('change', () => {
+        bookmark.status = select.value;
+        chrome.storage.local.set({ [bookmark.id]: stored(bookmark) })
+            .catch((error) => {
+                console.error(`Failed to update status for story ${bookmark.id}:`, error);
+            });
+        render();
+    });
+
+    card.querySelector('.added').textContent = bookmark.displayDate === '-' ? '' : `Added ${bookmark.displayDate}`;
+    card.querySelector('.remove').addEventListener('click', () => removeBookmark(bookmark));
+    return card;
+};
+
+/**
+ * Shows the bookmarks that match the search and the status filter, in the chosen order.
+ */
+const render = () => {
+    const query = searchEl.value.trim().toLowerCase();
+    const counts = Object.fromEntries(['All', ...STATUSES].map((status) => [status, 0]));
+    const shown = [];
+    for (const bookmark of bookmarks) {
+        if (query && !searchText.get(bookmark).includes(query)) continue;
+        counts.All++;
+        counts[findStatus(bookmark)]++;
+        if (bookmark.status === 'Automatic') counts.Automatic++;
+        if (matchesStatus(bookmark, activeStatus)) shown.push(bookmark);
     }
+    sortList(shown);
+
+    const fragment = document.createDocumentFragment();
+    const create = view === 'table' ? createRow : createCard;
+    shown.forEach((bookmark) => fragment.appendChild(create(bookmark)));
+    (view === 'table' ? rowsEl : listEl).replaceChildren(fragment);
+    (view === 'table' ? listEl : rowsEl).replaceChildren();
+    tableWrapEl.hidden = view !== 'table' || shown.length === 0;
+    listEl.hidden = view !== 'cards';
+    viewButtons.forEach((button) => button.setAttribute('aria-pressed', String(button.dataset.view === view)));
+    showSortState();
+
+    filterButtons.forEach((button) => {
+        button.querySelector('span').textContent = counts[button.dataset.status];
+    });
+    const total = bookmarks.length;
+    countEl.textContent = `${total} ${total === 1 ? 'story' : 'stories'} bookmarked`;
+    emptyEl.hidden = shown.length > 0;
+    if (!total) emptyEl.textContent = 'No bookmarks yet. Use the bookmark button on any chapter to save your place.';
+    else if (query) emptyEl.textContent = `Nothing matches "${searchEl.value.trim()}".`;
+    else emptyEl.textContent = `No ${activeStatus.toLowerCase()} stories.`;
+};
+
+/**
+ * Deletes a bookmark, with a notice that offers Undo.
+ * @param {Object} bookmark
+ */
+const removeBookmark = (bookmark) => {
+    bookmarks = bookmarks.filter((b) => b !== bookmark);
+    lastRemoved = bookmark;
+    chrome.storage.local.remove(bookmark.id)
+        .catch((error) => {
+            console.error(`Failed to delete bookmark for story ${bookmark.id}:`, error);
+        });
+    noticeTextEl.textContent = `Deleted "${bookmark.storyName}".`;
+    undoEl.hidden = false;
+    noticeEl.hidden = false;
+    render();
+};
+
+undoEl.addEventListener('click', () => {
+    if (!lastRemoved) return;
+    const bookmark = lastRemoved;
+    lastRemoved = null;
+    bookmarks.push(bookmark);
+    chrome.storage.local.set({ [bookmark.id]: stored(bookmark) })
+        .catch((error) => {
+            console.error(`Failed to restore bookmark for story ${bookmark.id}:`, error);
+        });
+    noticeEl.hidden = true;
+    render();
 });
+
+/**
+ * Hides the status filters, badges and menus when the reading status setting is off.
+ */
+const hideOrganizerUI = () => {
+    showStatus = false;
+    document.body.classList.add('hide-status');
+};
 
 // Load settings and bookmarks together
 const settingsPromise = chrome.storage.sync.get('settings').catch((error) => {
@@ -138,15 +339,16 @@ const settingsPromise = chrome.storage.sync.get('settings').catch((error) => {
 });
 
 Promise.all([settingsPromise, chrome.storage.local.get()])
-    .then(([syncResult, bookmarks]) => {
+    .then(([syncResult, saved]) => {
         const settings = syncResult.settings || {};
         const validFmt = window.validateDateFormat(settings.dateFormat) === null
             ? settings.dateFormat
             : window.DEFAULT_DATE_FORMAT;
         let needToUpdate = false;
+        const loaded = [];
 
-        for (const key in bookmarks) {
-            const bookmark = bookmarks[key];
+        for (const key in saved) {
+            const bookmark = saved[key];
             if (bookmark.fandomName) {
                 bookmark.fandom = bookmark.fandomName;
                 delete bookmark.fandomName;
@@ -173,125 +375,117 @@ Promise.all([settingsPromise, chrome.storage.local.get()])
             if (bookmark.storyName) {
                 const dateObj = bookmark.addTime && bookmark.addTime !== '-' ? new Date(bookmark.addTime) : null;
                 bookmark.displayDate = dateObj ? window.formatDate(dateObj, validFmt) : '-';
-                addTimeMs.set(bookmark, dateObj ? dateObj.getTime() : Infinity);
-                bookmarkLinks.push(bookmark);
+                addTimeMs.set(bookmark, dateObj ? dateObj.getTime() : undefined);
+                searchText.set(bookmark, [bookmark.storyName, bookmark.author, bookmark.fandom]
+                    .join(' ').toLowerCase());
+                loaded.push(bookmark);
             }
         }
 
         if (needToUpdate) {
             chrome.storage.local.clear()
-                .then(() => chrome.storage.local.set(bookmarks))
+                .then(() => chrome.storage.local.set(saved))
                 .then(() => location.reload())
                 .catch(console.error);
             return;
         }
 
-        sortBookmarks(bookmarkLinks, 'addTime', 1);
-        renderBookmarks(bookmarkLinks);
-
+        bookmarks = loaded;
         // Hide organizer UI if it's off
         if (!settings.organizer) hideOrganizerUI();
+        render();
     })
     .catch((error) => {
         console.error('Failed to load bookmarks from local storage:', error);
     });
 
-// Export bookmarks
-document.getElementById('export').addEventListener('click', () => {
-    chrome.storage.local.get().then(result => {
-        const blob = new Blob([JSON.stringify(result)], { type: 'application/json;charset=utf-8' });
-        const link = Object.assign(document.createElement('a'), {
-            href: URL.createObjectURL(blob),
-            download: 'bookmarks.json'
-        });
-        link.click();
-    }).catch(e => console.error('Failed to export bookmarks to JSON file:', e));
+searchEl.addEventListener('input', render);
+sortEl.addEventListener('change', () => {
+    [sortType, sortDir] = SORT_CHOICES[sortEl.value] || SORT_CHOICES.oldest;
+    render();
 });
 
-// Import bookmarks
-document.getElementById('import').addEventListener('click', () => {
-    const fileInput = Object.assign(document.createElement('input'), { type: 'file' });
+// Clicking a table header sorts by that column; clicking it again reverses the order
+sortHeaders.forEach((header) => {
+    header.addEventListener('click', () => {
+        const type = header.dataset.sortType;
+        sortDir = type === sortType ? -sortDir : 1;
+        sortType = type;
+        render();
+    });
+});
 
-    fileInput.onchange = async e => {
-        const file = e.target.files[0];
+// Table or cards; the choice is remembered on this device
+viewButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        view = button.dataset.view;
+        try {
+            localStorage.setItem(VIEW_KEY, view);
+        } catch (error) {
+            // storage blocked: the choice lasts until the page is closed
+        }
+        render();
+    });
+});
+
+filterButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        activeStatus = button.dataset.status;
+        filterButtons.forEach((b) => b.setAttribute('aria-pressed', String(b === button)));
+        render();
+    });
+});
+
+// Export bookmarks
+document.getElementById('export').addEventListener('click', () => {
+    chrome.storage.local.get()
+        .then((result) => {
+            const blob = new Blob([JSON.stringify(result)], { type: 'application/json;charset=utf-8' });
+            const link = Object.assign(document.createElement('a'), {
+                href: URL.createObjectURL(blob),
+                download: 'bookmarks.json',
+            });
+            link.click();
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        })
+        .catch((error) => {
+            console.error('Failed to export bookmarks to JSON file:', error);
+        });
+});
+
+// Import bookmarks (replaces the current ones, so it asks first)
+document.getElementById('import').addEventListener('click', () => {
+    const fileInput = Object.assign(document.createElement('input'), {
+        type: 'file',
+        accept: '.json,application/json',
+        hidden: true,
+    });
+    // Kept in the page while the file picker is open, so the browser can't discard it before a file is chosen
+    document.body.appendChild(fileInput);
+
+    fileInput.addEventListener('change', async () => {
+        const file = fileInput.files[0];
+        fileInput.remove();
         if (!file) return;
         try {
             const jsonData = JSON.parse(await file.text());
+            if (!jsonData || typeof jsonData !== 'object' || Array.isArray(jsonData)) {
+                throw new Error('The file is not a bookmarks file.');
+            }
+            const count = Object.values(jsonData).filter((b) => b && b.storyName).length;
+            const ok = window.confirm(`Replace your ${bookmarks.length} bookmarks with the ${count} in this file?`);
+            if (!ok) return;
             await chrome.storage.local.clear();
             await chrome.storage.local.set(jsonData);
             location.reload();
-        } catch (err) {
-            console.error('Failed to import bookmarks from JSON file:', err);
+        } catch (error) {
+            console.error('Failed to import bookmarks from JSON file:', error);
+            noticeTextEl.textContent = 'That file could not be imported. Choose a file saved with Export.';
+            undoEl.hidden = true;
+            noticeEl.hidden = false;
         }
-    };
+    });
 
+    fileInput.addEventListener('cancel', () => fileInput.remove());
     fileInput.click();
 });
-
-// Sorting
-const sortHeaders = document.querySelectorAll('th[data-sort-type]');
-let activeSortHeader = document.querySelector('th.active');
-sortHeaders.forEach(header => {
-    header.addEventListener('click', () => {
-        const sortType = header.getAttribute('data-sort-type');
-        const sortDirection = header.classList.toggle('descending') ? -1 : 1;
-
-        if (activeSortHeader && activeSortHeader !== header) activeSortHeader.classList.remove('active');
-        header.classList.add('active');
-        activeSortHeader = header;
-
-        try {
-            sortBookmarks(bookmarkLinks, sortType, sortDirection);
-            renderBookmarks(bookmarkLinks);
-        } catch (e) {
-            console.error('Failed to update bookmark table sorting:', e);
-        }
-    });
-});
-
-function filterBookmarks(status) {
-    if (status === 'All') {
-        renderBookmarks(bookmarkLinks);
-    } else if (status === 'Automatic') {
-        renderBookmarks(bookmarkLinks.filter(b => b.status === 'Automatic'));
-    } else {
-        renderBookmarks(bookmarkLinks.filter(b => findStatus(b) === status));
-    }
-}
-
-
-const FILTER_MAP = {
-    'filter-all': 'All',
-    'filter-automatic': 'Automatic',
-    'filter-planned': 'Planned',
-    'filter-reading': 'Reading',
-    'filter-completed': 'Completed',
-    'filter-dropped': 'Dropped',
-};
-
-let activeFilterBtn = null;
-function setFilterActive(btn) {
-    if (activeFilterBtn) activeFilterBtn.classList.remove('filter-active');
-    activeFilterBtn = btn;
-    if (btn) btn.classList.add('filter-active');
-}
-
-document.querySelectorAll('.filters .filter-btn').forEach(btn => {
-    const status = FILTER_MAP[btn.id];
-    if (!status) return;
-    btn.addEventListener('click', () => {
-        setFilterActive(btn);
-        filterBookmarks(status);
-    });
-    if (btn.id === 'filter-all') setFilterActive(btn);
-});
-
-
-function hideOrganizerUI() {
-    if (document.getElementById('bf-organizer-off')) return;
-    const style = Object.assign(document.createElement('style'), {
-        id: 'bf-organizer-off',
-        textContent: '.filters,th[data-sort-type="status"],.status-cell,.options-cell .change-link,.options-cell .sep{display:none!important;}'
-    });
-    document.head.appendChild(style);
-}
