@@ -6,11 +6,13 @@
 const primaryFunctions = [
     'autoSave',
     'markBookmarks',
-    'colorBookmarks',
+    'lastRead',
     'organizer',
     'entireWork',
     'groupDescriptions',
     'styleDescriptions',
+    'dateFormat',
+    'darkMode',
 ];
 
 /**
@@ -20,7 +22,10 @@ const primaryFunctions = [
 const secondaryFunctions = [
     'adblock',
     'copy',
-    'shortcuts',
+    'favoritesLink',
+    'followsLink',
+    'profileLink',
+    'siteSwitch',
     'bookmarks',
     'wordCounter',
     'profileSorts',
@@ -31,11 +36,12 @@ const secondaryFunctions = [
 // Default values for primary functions
 const primaryDefaults = {
     markBookmarks: true,
-    colorBookmarks: true,
+    lastRead: true,
     entireWork: true,
     groupDescriptions: true,
     styleDescriptions: true,
     organizer: true,
+    dateFormat: "MM/DD/YY"
 };
 
 const legacyMap = {
@@ -48,6 +54,8 @@ const legacyMap = {
     allowCopy: 'copy',
     allFicButton: 'entireWork',
 };
+const legacyMapKeys = Object.keys(legacyMap);
+const allFunctions = [...primaryFunctions, ...secondaryFunctions];
 
 chrome.runtime.onInstalled.addListener((details) => {
     const defaultSettings = {};
@@ -58,20 +66,26 @@ chrome.runtime.onInstalled.addListener((details) => {
         .then((result) => {
             const settings = result.settings;
             if (settings) {
-                [...primaryFunctions, ...secondaryFunctions].forEach(setting => {
+                for (let i = 0; i < allFunctions.length; i++) {
+                    const setting = allFunctions[i];
                     if (settings[setting] !== undefined) {
                         defaultSettings[setting] = settings[setting];
                     }
-                });
-            }
-
-            // compatibility with old version settings
-            Object.keys(legacyMap).forEach(oldKey => {
-                if (settings && settings[oldKey] !== undefined) {
-                    const newKey = legacyMap[oldKey];
-                    defaultSettings[newKey] = settings[oldKey];
                 }
-            });
+                // "Icons for quick navigation" used to be one switch for both Favorites and Follows
+                if (settings.shortcuts !== undefined) {
+                    ['favoritesLink', 'followsLink'].forEach((setting) => {
+                        if (settings[setting] === undefined) defaultSettings[setting] = settings.shortcuts;
+                    });
+                }
+                // compatibility with old version settings
+                for (let i = 0; i < legacyMapKeys.length; i++) {
+                    const oldKey = legacyMapKeys[i];
+                    if (settings[oldKey] !== undefined) {
+                        defaultSettings[legacyMap[oldKey]] = settings[oldKey];
+                    }
+                }
+            }
 
             return chrome.storage.sync.set({
                 settings: defaultSettings
@@ -96,12 +110,13 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
         chrome.storage.local.set({
             [action.id]: {
                 chapter: action.chapter,
+                chapters: action.chapters,
                 id: action.id,
                 fandom: action.fandom,
                 author: action.author,
                 storyName: action.storyName,
-                addTime: new Date().toISOString(),
-                status: 'Reading'
+                addTime: action.addTime,
+                status: action.status
             },
         })
             .catch((error) => {
@@ -112,33 +127,14 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
             .catch((error) => {
                 console.error(`Failed to delete bookmark for story ${action.id}:`, error);
             });
-    } else if (action.message === 'get-info') {
-        chrome.storage.sync.get('settings')
-            .then((result) => {
-                const settings = result.settings;
-                sendResponse({ result: settings });
-            })
-            .catch((error) => {
-                console.error('Failed to retrieve extension settings from storage:', error);
-                sendResponse({ result: {} });
-            });
-    } else if (action.message === 'get-dir') {
-        chrome.storage.local.get()
-            .then((result) => {
-                sendResponse({ result });
-            })
-            .catch((error) => {
-                console.error('Failed to retrieve bookmark directory from local storage:', error);
-                sendResponse({ result: {} });
-            });
     }
     else if (action.message === 'set-status') {
         chrome.storage.local.get(action.id)
-            .then((data) => {
-                const existing = data[action.id] || { id: action.id };
-                existing.status = action.status;
-                if (!existing.addTime) existing.addTime = new Date().toISOString();
-                return chrome.storage.local.set({ [action.id]: existing });
+            .then(data => data[action.id] || { id: action.id })
+            .then((existing) => {
+                const updated = { ...existing, status: action.status };
+                if (!updated.addTime) updated.addTime = new Date().toISOString();
+                return chrome.storage.local.set({ [action.id]: updated });
             })
             .then(() => {
                 sendResponse({ result: { ok: true } });

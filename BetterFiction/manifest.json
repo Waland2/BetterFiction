@@ -1,6 +1,6 @@
 {
     "name": "BetterFiction",
-    "version": "1.1.9",
+    "version": "1.3.0",
     "manifest_version": 3,
     "description": "FanFiction.net improver",
     "author": "Waland2 & shahaadi",
@@ -15,6 +15,11 @@
         "service_worker": "background.js"
     },
     "content_scripts": [
+        {
+            "matches": ["https://www.fanfiction.net/*"],
+            "run_at": "document_start",
+            "js": ["dark-mode.js"]
+        },
         {
             "matches": ["https://www.fanfiction.net/*"],
             "run_at": "document_end",

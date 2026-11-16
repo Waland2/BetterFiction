@@ -63,10 +63,6 @@ label {
     cursor: pointer;
 }
 
-label:hover {
-    transition: 0.15s;
-}
-
 @supports (-webkit-appearance: none) or (-moz-appearance: none) {
     .checkbox-label input[type='checkbox'] {
         --active: #741bfb;
@@ -177,8 +173,4 @@ label:hover {
 
 .checkbox-label * {
     box-sizing: inherit;
-}
-
-.checkbox-label *:before,
-.checkbox-label *:after {
 }

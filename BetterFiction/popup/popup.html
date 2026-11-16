@@ -23,6 +23,13 @@
             </div>
 
             <div class="checkbox-label">
+                <input type="checkbox" id="darkMode" />
+                <label for="darkMode" title="Dark grey background with light text on FanFiction.net">
+                    Dark mode
+                </label>
+            </div>
+
+            <div class="checkbox-label">
                 <input type="checkbox" id="autoSave" />
                 <label for="autoSave" title="Automatically leave a bookmark at the last read chapter">
                     Automatically leave a bookmark
@@ -37,16 +44,16 @@
             </div>
 
             <div class="checkbox-label">
-                <input type="checkbox" id="colorBookmarks" />
-                <label for="colorBookmarks" title="Color the bookmarks based on read status (planned, ongoing, completed)">
-                    Color bookmarks by read status
+                <input type="checkbox" id="lastRead" />
+                <label for="lastRead" title="Show the chapter you last read in the story details, as a link to it">
+                    Show last read chapter
                 </label>
             </div>
 
             <div class="checkbox-label">
                 <input type="checkbox" id="organizer" />
-                <label for="organizer" title="Fanfiction List">
-                    Fanfiction Organizer
+                <label for="organizer" title="Allows you to set the statuses Reading/Completed/Dropped/Planned for bookmarks">
+                    Fanfiction Organizer (Bookmark statuses & colors)
                 </label>
             </div>
 
@@ -72,6 +79,6 @@
             </div>
         </div>
     </body>
-    <script src="../utils/checkbox-handler.js"></script>
+    <script src="../utils/handlers.js"></script>
     <script src="popup.js"></script>
 </html>
