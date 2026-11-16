@@ -409,6 +409,11 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
         const ch = toNum(el.id.substring(9), 0);
         if (ch && !document.getElementById(`separator${ch}`)) el.before(makeSeparator(ch));
     }
+
+    // The status menu goes just left of "Go to bookmark" (both float right, so it's placed after it)
+    const statusWrap = document.getElementById('organizer-status-selecter');
+    const goButton = document.getElementById('gobutton');
+    if (statusWrap && goButton && goButton.nextElementSibling !== statusWrap) goButton.after(statusWrap);
 };
 
 /**
