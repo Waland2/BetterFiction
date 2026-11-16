@@ -483,9 +483,10 @@
         if (bar.childNodes.length) storyBox.before(bar);
         refresh();
 
-        // Auto-save: a new story is bookmarked; a bookmarked one moves forward one chapter at a time
+        // Auto-save only moves a bookmark you already have, one chapter at a time (2 -> 3, never 1 -> 40).
+        // Opening a story never bookmarks it by itself.
         const savedChapter = dir[storyId]?.chapter || 0;
-        if (info.bookmarks && info.autoSave && (savedChapter === 0 || chapter === savedChapter + 1)) save(chapter);
+        if (info.bookmarks && info.autoSave && savedChapter && chapter === savedChapter + 1) save(chapter);
     };
 
     const STYLE = `
