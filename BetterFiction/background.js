@@ -30,7 +30,8 @@ const secondaryFunctions = [
     'wordCounter',
     'profileSorts',
     'bigCovers',
-    'separateFics'
+    'separateFics',
+    'ao3Enabled'
 ];
 
 // Default values for primary functions
@@ -116,7 +117,9 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
                 author: action.author,
                 storyName: action.storyName,
                 addTime: action.addTime,
-                status: action.status
+                status: action.status,
+                // AO3 works: which site, and the address of the bookmarked chapter
+                ...(action.site ? { site: action.site, url: action.url } : {})
             },
         })
             .catch((error) => {
