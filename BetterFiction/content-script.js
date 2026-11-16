@@ -662,10 +662,13 @@ const main = async () => {
                 follow.after(btn);
             }
 
-            // Auto-save only moves a bookmark you already have, one chapter at a time
-            // (2 -> 3, never 1 -> 40). Opening a story never bookmarks it by itself.
+            // "Bookmark new stories automatically": a story without a bookmark is bookmarked here.
+            // "Bookmark follows your reading": a bookmark you have moves forward one chapter at a time
+            // (2 -> 3, never 1 -> 40), so opening a later chapter to look ahead doesn't lose your place.
             const savedChapter = dirEntry?.chapter || 0;
-            if (info.bookmarks && info.autoSave && savedChapter && chapter === savedChapter + 1) {
+            const bookmarkNew = info.autoBookmarkNew && savedChapter === 0;
+            const followReading = info.autoSave && savedChapter && chapter === savedChapter + 1;
+            if (info.bookmarks && (bookmarkNew || followReading)) {
                 document.getElementById(`bookmark${chapter}`)?.click();
             }
 
