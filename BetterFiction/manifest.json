@@ -24,9 +24,14 @@
             "matches": ["https://www.fanfiction.net/*"],
             "run_at": "document_end",
             "js": ["content-script.js"]
+        },
+        {
+            "matches": ["https://m.fanfiction.net/*"],
+            "run_at": "document_end",
+            "js": ["mobile.js"]
         }
     ],
-    "host_permissions": ["https://www.fanfiction.net/*"],
+    "host_permissions": ["https://www.fanfiction.net/*", "https://m.fanfiction.net/*"],
     "web_accessible_resources": [
         {
             "resources": ["icons/*", "utils/*", "tabs/*"],
