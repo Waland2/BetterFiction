@@ -200,7 +200,7 @@
     /**
      * Shows "Last read" right after the word count, as one link to that chapter:
      * "Last read: 5" when the details show the chapter count (story lists),
-     * "Last read: chapter 5 of 20" when they don't (the mobile story page).
+     * "Last read: 5 of 20" when they don't (the mobile story page).
      * @param {Object} info
      * @param {Element} container
      * @param {string} storyId
@@ -214,7 +214,7 @@
         const showsChapters = container.querySelector('.bf-chapters') || /\bchapters:/i.test(container.textContent);
         const link = mkEl('a', {
             href: `${SITE}/s/${storyId}/${chapter}/`,
-            textContent: showsChapters ? `Last read: ${chapter}` : `Last read: chapter ${chapter}${chapters > 1 ? ` of ${chapters}` : ''}`,
+            textContent: showsChapters ? `Last read: ${chapter}` : `Last read: ${chapter}${chapters > 1 ? ` of ${chapters}` : ''}`,
         });
         link.style.fontWeight = '600';
         const words = container.querySelector('.bf-words');
@@ -272,14 +272,16 @@
     const countWords = (root) => Array.from(root.querySelectorAll('p'))
         .reduce((n, p) => n + (p.textContent.trim() ? p.textContent.trim().split(/\s+/).length : 0), 0);
 
-    /** "Chapter 1 - 10" is the last bit of text in the page header. */
-    const chapterTitleFrom = (doc) => {
+    /** The "Chapter 1 - 10" text, the last bit of text in the page header (or null). */
+    const chapterTitleNode = (doc) => {
         const content = doc.querySelector('#content');
-        if (!content) return '';
+        if (!content) return null;
         const texts = Array.from(content.childNodes).filter((n) => n.nodeType === 3 && n.textContent.trim());
-        const text = texts[texts.length - 1]?.textContent.trim() || '';
-        return /^chapter\b/i.test(text) && text.length < 200 ? text : '';
+        const node = texts[texts.length - 1];
+        const text = node?.textContent.trim() || '';
+        return /^chapter\b/i.test(text) && text.length < 200 ? node : null;
     };
+    const chapterTitleFrom = (doc) => chapterTitleNode(doc)?.textContent.trim() || '';
 
     /**
      * The story page: bookmark bar, status, words, Entire Work, details and copying.
@@ -346,15 +348,22 @@
         };
 
         const bookmarkButton = (ch) => {
-            const button = mkEl('button', { type: 'button', className: 'btn bf-bookmark' });
+            const button = mkEl('button', { type: 'button', className: 'btn bf-bookmark bookmark' });
             button.dataset.chapter = String(ch);
             button.addEventListener('click', () => (dir[storyId]?.chapter === ch ? remove() : save(ch)));
             bookmarkButtons.push(button);
             return button;
         };
 
-        const goLink = mkEl('a', { className: 'btn bf-go', textContent: 'Go to bookmark' });
+        const goButton = mkEl('button', { type: 'button', className: 'btn bf-go', textContent: 'Go to bookmark' });
+        goButton.addEventListener('click', () => {
+            const saved = dir[storyId]?.chapter;
+            const loaded = saved && document.querySelector(`#bf-chapter-${saved}`);
+            if (loaded) loaded.scrollIntoView({ behavior: 'smooth' });
+            else if (saved) location.href = `${SITE}/s/${storyId}/${saved}/`;
+        });
         let statusSelect = null;
+        let statusWrap = null;
 
         const refresh = () => {
             const entry = dir[storyId];
@@ -362,27 +371,26 @@
             bookmarkButtons.forEach((button) => {
                 const ch = Number(button.dataset.chapter);
                 const here = saved === ch;
-                button.replaceChildren(
-                    mkEl('img', { src: bookmarkIcon(here ? bookmarkColor(info, entry, chapters) : 'none'), width: 18, height: 18, alt: '' }),
-                    here ? 'Bookmarked' : 'Bookmark',
-                );
+                // Only the icon, like the desktop site: filled in the status colour when this chapter is bookmarked
+                button.replaceChildren(mkEl('img', {
+                    src: bookmarkIcon(here ? bookmarkColor(info, entry, chapters) : 'none'), width: 24, height: 24, alt: '',
+                }));
                 button.title = here ? 'Remove the bookmark' : `Bookmark chapter ${ch}`;
+                button.setAttribute('aria-pressed', String(here));
             });
-            const loaded = saved && document.querySelector(`#bf-chapter-${saved}`);
-            goLink.style.display = saved && saved !== chapter ? '' : 'none';
-            goLink.href = loaded ? `#bf-chapter-${saved}` : `${SITE}/s/${storyId}/${saved || 1}/`;
-            if (statusSelect) {
-                statusSelect.style.display = saved ? '' : 'none';
+            goButton.style.display = saved ? '' : 'none';
+            if (statusWrap) {
+                statusWrap.style.display = saved ? '' : 'none';
                 statusSelect.value = STATUSES.includes(entry?.status) ? entry.status : 'Automatic';
             }
             if (detailsBox) showLastRead(info, detailsBox, storyId, saved, chapters);
         };
 
         if (info.bookmarks) {
-            bar.append(bookmarkButton(chapter), goLink);
+            bar.append(bookmarkButton(chapter), goButton);
             if (info.organizer) {
-                statusSelect = mkEl('select', { title: 'Reading status' });
-                statusSelect.setAttribute('aria-label', 'Reading status');
+                statusSelect = mkEl('select');
+                statusSelect.setAttribute('aria-label', 'Change reading status');
                 STATUSES.forEach((status) => statusSelect.append(new Option(status, status)));
                 statusSelect.addEventListener('change', () => {
                     if (!dir[storyId]) return;
@@ -390,12 +398,19 @@
                     sendMsg({ message: 'set-status', id: storyId, status: statusSelect.value });
                     refresh();
                 });
-                bar.append(statusSelect);
+                statusWrap = mkEl('span', { className: 'bf-status' }, [mkEl('span', { textContent: 'Status:' }), statusSelect]);
+                bar.append(statusWrap);
             }
         }
 
-        const wordsLabel = info.wordCounter ? mkEl('span', { className: 'bf-words-count', textContent: plural(countWords(story), 'word') }) : null;
-        if (wordsLabel) bar.append(wordsLabel);
+        // "Chapter 1 - 10 - 10,906 words": the word count right of the chapter title
+        let wordsLabel = null;
+        if (info.wordCounter) {
+            wordsLabel = mkEl('span', { className: 'bf-words-count', textContent: ` - ${plural(countWords(story), 'word')}` });
+            const titleNode = chapterTitleNode(document);
+            if (titleNode) titleNode.after(wordsLabel);
+            else bar.append(wordsLabel);
+        }
 
         // ----- Entire Work: every chapter on one page -----
         if (info.entireWork && chapters > 1) {
@@ -410,8 +425,9 @@
 
         const chapterBlock = (n, title, body) => {
             const heading = mkEl('div', { id: `bf-chapter-${n}`, className: 'bf-chapter-heading' });
-            heading.append(mkEl('h3', { textContent: title || `Chapter ${n}` }));
-            if (info.wordCounter) heading.append(mkEl('span', { className: 'bf-words-count', textContent: plural(countWords(body), 'word') }));
+            const h3 = mkEl('h3', { textContent: title || `Chapter ${n}` });
+            if (info.wordCounter) h3.append(mkEl('span', { className: 'bf-words-count', textContent: ` - ${plural(countWords(body), 'word')}` }));
+            heading.append(h3);
             if (info.bookmarks) heading.append(bookmarkButton(n));
             return [heading, body];
         };
@@ -474,9 +490,13 @@
 
     const STYLE = `
 #bf-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; }
-#bf-bar .btn, #bf-bar select, .bf-chapter-heading .btn { font-size: 14px; padding: 6px 10px; border-radius: 6px; }
-#bf-bar .btn img, .bf-chapter-heading .btn img { vertical-align: middle; margin-right: 4px; }
-.bf-words-count { font-size: 14px; opacity: .8; }
+#bf-bar .btn, .bf-chapter-heading .btn { font-size: 14px; padding: 4px 10px; height: 34px; }
+.bf-bookmark.btn { padding: 2px 8px; }
+.bf-bookmark img { vertical-align: middle; }
+.bf-status { display: inline-flex; align-items: center; gap: 6px; }
+.bf-status span { font-size: 13px; }
+.bf-status select { height: 34px; padding: 2px 6px; font-size: 14px; border: 1px solid #d1d5db; border-radius: 6px; background: #fff; }
+.bf-words-count { font-weight: normal; }
 .bf-chapter-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 14px 10px 4px; border-top: 1px solid #969696; }
 .bf-chapter-heading h3 { margin: 0; font-size: 1.05em; flex: 1; min-width: 150px; }
 .bf-entire-footer { text-align: center; padding: 10px; }
