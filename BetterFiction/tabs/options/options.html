@@ -157,12 +157,41 @@
         <section aria-labelledby="section-3">
             <h2 id="section-3">Top bar</h2>
             <div class="panel">
-                <label class="row" title="Adds icons for your favourite and followed stories to the top bar." for="shortcuts">
+                <label class="row" title="Adds an icon for your favourite stories to the top bar." for="favoritesLink">
                     <span class="text">
-                        <span class="name">Quick links</span>
-                        <span class="desc">Adds icons for your favourite and followed stories to the top bar.</span>
+                        <span class="name">Favorites link</span>
+                        <span class="desc">Adds an icon for your favourite stories to the top bar.</span>
                     </span>
-                    <input type="checkbox" class="switch" id="shortcuts" />
+                    <input type="checkbox" class="switch" id="favoritesLink" />
+                </label>
+                <label class="row" title="Adds an icon for the stories you follow to the top bar." for="followsLink">
+                    <span class="text">
+                        <span class="name">Follows link</span>
+                        <span class="desc">Adds an icon for the stories you follow to the top bar.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="followsLink" />
+                </label>
+                <label class="row" title="Adds an icon for your profile to the top bar. Paste your profile address below." for="profileLink">
+                    <span class="text">
+                        <span class="name">Profile link</span>
+                        <span class="desc">Adds an icon for your profile to the top bar. Paste your profile address below.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="profileLink" />
+                </label>
+                <div class="row field">
+                    <label class="text" for="profileUrl">
+                        <span class="name">Your profile address</span>
+                        <span class="desc">Open your profile on FanFiction.net and copy the address, for example https://www.fanfiction.net/u/1234567/YourName</span>
+                    </label>
+                    <input type="url" id="profileUrl" class="wide" placeholder="https://www.fanfiction.net/u/1234567/YourName" autocomplete="off" spellcheck="false" />
+                    <p id="profileUrlMessage" class="field-message" role="status"></p>
+                </div>
+                <label class="row" title="The site&#x27;s Mobile Edition button opens the page you&#x27;re on, instead of the mobile home page." for="siteSwitch">
+                    <span class="text">
+                        <span class="name">Mobile Edition keeps your page</span>
+                        <span class="desc">The site&#x27;s Mobile Edition button opens the page you&#x27;re on, instead of the mobile home page.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="siteSwitch" />
                 </label>
             </div>
         </section>
