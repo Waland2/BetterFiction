@@ -189,9 +189,10 @@
         nav.append(bookmarkLi, goLi, statusLi);
         render();
 
-        // Auto-save, as on FanFiction.net: a new work is bookmarked, a bookmarked one moves forward one chapter at a time
+        // Auto-save only moves a bookmark you already have, one chapter at a time (2 -> 3, never 1 -> 40).
+        // Opening a work never bookmarks it by itself.
         const savedChapter = dir[k]?.chapter || 0;
-        if (info.autoSave && (savedChapter === 0 || chapter === savedChapter + 1)) save();
+        if (info.autoSave && savedChapter && chapter === savedChapter + 1) save();
     };
 
     const STYLE = `
