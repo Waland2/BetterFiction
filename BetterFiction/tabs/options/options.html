@@ -4,153 +4,176 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Options</title>
+    <title>BetterFiction settings</title>
     <link rel="stylesheet" href="options.css" />
 </head>
 
 <body>
     <main>
         <header>
-            <span>BetterFiction Extension</span>
+            <img src="../../icons/ava.png" alt="" width="48" height="48" />
+            <div>
+                <h1>BetterFiction</h1>
+                <p>Settings are saved as soon as you change them.</p>
+            </div>
+            <div class="header-tools">
+                <div class="view-switch" role="group" aria-label="Layout">
+                    <button type="button" class="view" data-view="compact" aria-pressed="true">Compact</button>
+                    <button type="button" class="view" data-view="detailed" aria-pressed="false">Detailed</button>
+                </div>
+                <a class="button" href="../bookmarks/bookmarks.html" title="Open your bookmarks">Bookmarks</a>
+            </div>
         </header>
 
-        <div class="features">
-            <p class="header">Major features</p>
-
-            <div class="checkbox-label">
-                <input type="checkbox" id="autoSave" />
-                <label for="autoSave" title="Automatically leave a bookmark at the last read chapter">
-                    Automatically leave a bookmark
+        <section aria-labelledby="section-0">
+            <h2 id="section-0">Bookmarks</h2>
+            <div class="panel">
+                <label class="row" title="Adds a bookmark button to each chapter, so you can save your place and come back to it." for="bookmarks">
+                    <span class="text">
+                        <span class="name">Bookmarks</span>
+                        <span class="desc">Adds a bookmark button to each chapter, so you can save your place and come back to it.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="bookmarks" />
+                </label>
+                <label class="row" title="Moves your bookmark forward when you open a later chapter of a story." for="autoSave">
+                    <span class="text">
+                        <span class="name">Bookmark automatically</span>
+                        <span class="desc">Moves your bookmark forward when you open a later chapter of a story.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="autoSave" />
+                </label>
+                <label class="row" title="Highlights stories you&#x27;ve bookmarked in search results and story lists." for="markBookmarks">
+                    <span class="text">
+                        <span class="name">Mark bookmarked stories</span>
+                        <span class="desc">Highlights stories you&#x27;ve bookmarked in search results and story lists.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="markBookmarks" />
+                </label>
+                <label class="row" title="Shows “Last read: N” after the word count in a story's details, as a link to that chapter." for="lastRead">
+                    <span class="text">
+                        <span class="name">Show last read chapter</span>
+                        <span class="desc">Shows “Last read: N” after the word count in a story's details, as a link to that chapter.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="lastRead" />
+                </label>
+                <label class="row" title="Lets you set a status for each bookmarked story (Automatic, Planned, Reading, Completed or Dropped), shown by the bookmark&#x27;s colour." for="organizer">
+                    <span class="text">
+                        <span class="name">Reading status</span>
+                        <span class="desc">Lets you set a status for each bookmarked story (Automatic, Planned, Reading, Completed or Dropped), shown by the bookmark&#x27;s colour.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="organizer" />
                 </label>
             </div>
+        </section>
 
-            <div class="checkbox-label">
-                <input type="checkbox" id="markBookmarks" />
-                <label for="markBookmarks" title="Mark the fanfiction on which the bookmark was left">
-                    Mark fanfiction with bookmarks
+        <section aria-labelledby="section-1">
+            <h2 id="section-1">Reading a story</h2>
+            <div class="panel">
+                <label class="row" title="Adds a button that loads every chapter onto one page." for="entireWork">
+                    <span class="text">
+                        <span class="name">Entire work button</span>
+                        <span class="desc">Adds a button that loads every chapter onto one page.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="entireWork" />
+                </label>
+                <label class="row" title="Shows each chapter&#x27;s word count in the chapter menu." for="wordCounter">
+                    <span class="text">
+                        <span class="name">Words per chapter</span>
+                        <span class="desc">Shows each chapter&#x27;s word count in the chapter menu.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="wordCounter" />
+                </label>
+                <label class="row" title="Lets you select and copy story text." for="copy">
+                    <span class="text">
+                        <span class="name">Allow copying text</span>
+                        <span class="desc">Lets you select and copy story text.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="copy" />
+                </label>
+                <label class="row" title="Removes ads from pages." for="adblock">
+                    <span class="text">
+                        <span class="name">Block ads</span>
+                        <span class="desc">Removes ads from pages.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="adblock" />
                 </label>
             </div>
+        </section>
 
-            <div class="checkbox-label">
-                <input type="checkbox" id="lastRead" />
-                <label for="lastRead" title="Show the chapter you last read in the story details, as a link to it">
-                    Show last read chapter
+        <section aria-labelledby="section-2">
+            <h2 id="section-2">Story details and lists</h2>
+            <div class="panel">
+                <label class="row" title="Puts rating, word count, dates and characters on their own lines, so they&#x27;re easier to read." for="groupDescriptions">
+                    <span class="text">
+                        <span class="name">Group story details</span>
+                        <span class="desc">Puts rating, word count, dates and characters on their own lines, so they&#x27;re easier to read.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="groupDescriptions" />
                 </label>
-            </div>
-
-            <div class="checkbox-label">
-                <input type="checkbox" id="organizer" />
-                <label for="organizer"
-                    title="Allows you to set the statuses Reading/Completed/Dropped/Planned for bookmarks">
-                    Fanfiction Organizer (Bookmark statuses & colors)
+                <label class="row" title="Colours the rating, language, genre and status so they stand out." for="styleDescriptions">
+                    <span class="text">
+                        <span class="name">Colour story details</span>
+                        <span class="desc">Colours the rating, language, genre and status so they stand out.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="styleDescriptions" />
                 </label>
-            </div>
-
-            <div class="checkbox-label">
-                <input type="checkbox" id="entireWork" />
-                <label for="entireWork" title="Button to show the entire work">
-                    Entire work button
-                </label>
-            </div>
-
-            <div class="checkbox-label">
-                <input type="checkbox" id="groupDescriptions" />
-                <label for="groupDescriptions" title="Group the description of the fanfic">
-                    Grouping fics descriptions
-                </label>
-            </div>
-
-            <div class="checkbox-label">
-                <input type="checkbox" id="styleDescriptions" />
-                <label for="styleDescriptions"
-                    title="To highlight information in the fanfic description with different colors">
-                    Highlight fics descriptions with colors
-                </label>
-            </div>
-
-            <div class="select-label">
-                <label for="dateFormat" title="Type your own date format using the tokens below">
-                    Date format
-                </label>
-
-                <input type="text" id="dateFormat" placeholder="MM/DD/YY" autocomplete="off" spellcheck="false" />
-                <div class="date-format-hint">
-                    Tokens: <code>Month</code> (January) &middot; <code>Mon</code> (Jan) &middot; <code>MM</code> (01) &middot; <code>DD</code> (01) &middot; <code>D</code> (1) &middot; <code>YYYY</code> (2000) &middot; <code>YY</code> (00). Any separator, any order.
-                    <br />Preview: <span id="dateFormatPreview"></span>
+                <div class="row field">
+                    <label class="text" for="dateFormat">
+                        <span class="name">Date format</span>
+                        <span class="desc">How dates are shown. Type any order and separator using the parts below.</span>
+                    </label>
+                    <input type="text" id="dateFormat" placeholder="MM/DD/YY" autocomplete="off" spellcheck="false" />
+                    <p class="date-format-hint">
+                        <code>Month</code> January &middot; <code>Mon</code> Jan &middot; <code>MM</code> 01 &middot;
+                        <code>DD</code> 01 &middot; <code>D</code> 1 &middot; <code>YYYY</code> 2000 &middot; <code>YY</code> 00
+                    </p>
+                    <p class="date-format-preview">Preview: <span id="dateFormatPreview"></span></p>
+                    <p id="dateFormatError" class="date-format-error" role="alert" hidden></p>
                 </div>
-                <div id="dateFormatError" class="date-format-error" hidden></div>
-            </div>
-        </div>
-
-        <div class="features">
-            <p class="header">Minor features</p>
-
-            <div class="checkbox-label">
-                <input type="checkbox" id="adblock" />
-                <label for="adblock" title="Block ads on website">
-                    Block ads
+                <label class="row" title="Shows bigger cover images in story lists." for="bigCovers">
+                    <span class="text">
+                        <span class="name">Larger covers</span>
+                        <span class="desc">Shows bigger cover images in story lists.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="bigCovers" />
+                </label>
+                <label class="row" title="Draws a border around each story in lists." for="separateFics">
+                    <span class="text">
+                        <span class="name">Separate stories</span>
+                        <span class="desc">Draws a border around each story in lists.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="separateFics" />
+                </label>
+                <label class="row" title="Adds sorting by Follows and Favs to the story lists on author profiles." for="profileSorts">
+                    <span class="text">
+                        <span class="name">More sorting on profiles</span>
+                        <span class="desc">Adds sorting by Follows and Favs to the story lists on author profiles.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="profileSorts" />
                 </label>
             </div>
+        </section>
 
-            <div class="checkbox-label">
-                <input type="checkbox" id="copy" />
-                <label for="copy" title="Removing the restriction on copying text from fanfiction">
-                    Allow copying text from fics
+        <section aria-labelledby="section-3">
+            <h2 id="section-3">Top bar</h2>
+            <div class="panel">
+                <label class="row" title="Adds icons for your favourite and followed stories to the top bar." for="shortcuts">
+                    <span class="text">
+                        <span class="name">Quick links</span>
+                        <span class="desc">Adds icons for your favourite and followed stories to the top bar.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="shortcuts" />
                 </label>
             </div>
+        </section>
 
-            <div class="checkbox-label">
-                <input type="checkbox" id="shortcuts" />
-                <label for="shortcuts" title="Icons for quick access to the list of favorite and followed stories">
-                    Icons for quick navigation
-                </label>
-            </div>
-
-            <div class="checkbox-label">
-                <input type="checkbox" id="bookmarks" />
-                <label for="bookmarks" title="The ability to leave bookmarks">
-                    Bookmarks
-                </label>
-            </div>
-
-            <div class="checkbox-label">
-                <input type="checkbox" id="wordCounter" />
-                <label for="wordCounter" title="Display the word count in the chapter">
-                    Display the word count in a chapter
-                </label>
-            </div>
-
-            <div class="checkbox-label">
-                <input type="checkbox" id="profileSorts" />
-                <label for="profileSorts" title="Additional buttons in profiles for sorting by favorites and follows">
-                    Additional sort buttons in profiles
-                </label>
-            </div>
-
-            <div class="checkbox-label">
-                <input type="checkbox" id="bigCovers" />
-                <label for="bigCovers" title="Enlarge fanfic covers">
-                    Large covers for fics
-                </label>
-            </div>
-
-            <div class="checkbox-label">
-                <input type="checkbox" id="separateFics" />
-                <label for="separateFics" title="Split fanfics into separate blocks">
-                    Separate fics
-                </label>
-            </div>
-        </div>
-
-        <span class="note">
-            This extension is open-source -
-            <a href="https://github.com/Waland2/BetterFiction" target="_blank">GitHub</a>.
-            <br /><br />
-            <div class="authors">
-                Developed by Waland2 & shahaadi
-            </div>
-        </span>
-
+        <footer>
+            <p>
+                This extension is open-source:
+                <a href="https://github.com/Waland2/BetterFiction" target="_blank" rel="noopener">GitHub</a>
+            </p>
+            <p>Developed by Waland2 &amp; shahaadi &middot; version <span id="version"></span></p>
+        </footer>
     </main>
 
     <script src="../../utils/handlers.js"></script>
