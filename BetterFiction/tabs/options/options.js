@@ -1,5 +1,4 @@
 setupCheckboxes();
-setupSelects();
 
 document.getElementById('version').textContent = chrome.runtime.getManifest().version;
 
@@ -33,11 +32,15 @@ viewButtons.forEach((button) => {
 });
 
 const dateInput = document.getElementById('dateFormat');
+const dateMode = document.getElementById('dateFormatMode');
+const customDateFields = document.getElementById('customDateFormatFields');
 const previewEl = document.getElementById('dateFormatPreview');
 const errorEl = document.getElementById('dateFormatError');
 
 const render = () => {
-    const fmt = dateInput.value;
+    const custom = dateMode.value === 'Custom';
+    customDateFields.hidden = !custom;
+    const fmt = custom ? dateInput.value : dateMode.value;
     const err = window.validateDateFormat(fmt);
     if (err) {
         errorEl.textContent = err;
@@ -51,18 +54,33 @@ const render = () => {
 };
 
 getSettings().then((settings) => {
-    if (settings.dateFormat !== undefined) dateInput.value = settings.dateFormat;
+    if (!settings) return;
+    const fmt = settings.dateFormat || window.DEFAULT_DATE_FORMAT;
+    dateMode.value = settings.dateFormatMode || (['MM/DD/YY', 'DD.MM.YY'].includes(fmt) ? fmt : 'Custom');
+    dateInput.value = settings.customDateFormat || fmt;
     render();
 
-    dateInput.addEventListener('input', () => {
+    const saveDateFormat = () => {
         const err = render();
         if (err) return;
-        settings.dateFormat = dateInput.value;
+        settings.dateFormatMode = dateMode.value;
+        settings.customDateFormat = dateInput.value;
+        settings.dateFormat = dateMode.value === 'Custom' ? dateInput.value : dateMode.value;
         chrome.storage.sync.set({ settings })
             .catch((error) => {
                 console.error('Failed to save dateFormat:', error);
             });
-    });
+    };
+    dateInput.addEventListener('input', saveDateFormat);
+    dateMode.addEventListener('change', saveDateFormat);
+
+    const bookmarksToggle = document.getElementById('bookmarks');
+    const autoStatusToggle = document.getElementById('autoStatus');
+    const updateAutoStatus = () => {
+        autoStatusToggle.disabled = !bookmarksToggle.checked;
+    };
+    updateAutoStatus();
+    bookmarksToggle.addEventListener('change', updateAutoStatus);
 });
 
 // Profile address for the top bar's profile link

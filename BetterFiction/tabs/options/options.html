@@ -69,12 +69,19 @@
                     </span>
                     <input type="checkbox" class="switch" id="lastRead" />
                 </label>
-                <label class="row" title="Lets you set a status for each bookmarked story (Automatic, Planned, Reading, Completed or Dropped), shown by the bookmark&#x27;s colour." for="organizer">
+                <label class="row" title="Lets you set a status for each bookmarked story, shown by the bookmark&#x27;s colour." for="organizer">
                     <span class="text">
                         <span class="name">Reading status</span>
-                        <span class="desc">Lets you set a status for each bookmarked story (Automatic, Planned, Reading, Completed or Dropped), shown by the bookmark&#x27;s colour.</span>
+                        <span class="desc">Lets you set a status for each bookmarked story, shown by the bookmark&#x27;s colour.</span>
                     </span>
                     <input type="checkbox" class="switch" id="organizer" />
+                </label>
+                <label class="row" title="Derives Automatic statuses from chapter progress. When off, they use Reading. Requires Bookmarks." for="autoStatus">
+                    <span class="text">
+                        <span class="name">Automatic bookmark status</span>
+                        <span class="desc">Derives Automatic statuses from chapter progress. When off, they use Reading. Requires Bookmarks.</span>
+                    </span>
+                    <input type="checkbox" class="switch" id="autoStatus" disabled />
                 </label>
             </div>
         </section>
@@ -131,15 +138,22 @@
                     <input type="checkbox" class="switch" id="styleDescriptions" />
                 </label>
                 <div class="row field">
-                    <label class="text" for="dateFormat">
+                    <label class="text" for="dateFormatMode">
                         <span class="name">Date format</span>
-                        <span class="desc">How dates are shown. Type any order and separator using the parts below.</span>
+                        <span class="desc">How dates are shown. Choose a format or enter your own.</span>
                     </label>
-                    <input type="text" id="dateFormat" placeholder="MM/DD/YY" autocomplete="off" spellcheck="false" />
-                    <p class="date-format-hint">
-                        <code>Month</code> January &middot; <code>Mon</code> Jan &middot; <code>MM</code> 01 &middot;
-                        <code>DD</code> 01 &middot; <code>D</code> 1 &middot; <code>YYYY</code> 2000 &middot; <code>YY</code> 00
-                    </p>
+                    <select id="dateFormatMode">
+                        <option value="MM/DD/YY">MM/DD/YY</option>
+                        <option value="DD.MM.YY">DD.MM.YY</option>
+                        <option value="Custom">Custom</option>
+                    </select>
+                    <div id="customDateFormatFields" hidden>
+                        <input type="text" id="dateFormat" aria-label="Custom date format" placeholder="MM/DD/YY" autocomplete="off" spellcheck="false" />
+                        <p class="date-format-hint">
+                            <code>Month</code> January &middot; <code>Mon</code> Jan &middot; <code>MM</code> 01 &middot;
+                            <code>DD</code> 01 &middot; <code>D</code> 1 &middot; <code>YYYY</code> 2000 &middot; <code>YY</code> 00
+                        </p>
+                    </div>
                     <p class="date-format-preview">Preview: <span id="dateFormatPreview"></span></p>
                     <p id="dateFormatError" class="date-format-error" role="alert" hidden></p>
                 </div>
