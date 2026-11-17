@@ -17,6 +17,7 @@ const undoEl = document.getElementById('undo');
 /** All bookmarks shown on the page. */
 let bookmarks = [];
 let showStatus = true;
+let autoStatus = false;
 let activeStatus = 'All';
 const addTimeMs = new WeakMap();
 const searchText = new WeakMap();
@@ -49,6 +50,7 @@ let view = savedView();
  */
 const findStatus = (bookmark) => {
     if (bookmark.status === 'Automatic') {
+        if (!autoStatus) return 'Reading';
         if (bookmark.chapter === bookmark.chapters) return 'Completed';
         if (bookmark.chapter === 1) return 'Planned';
         return 'Reading';
@@ -64,7 +66,7 @@ const findStatus = (bookmark) => {
  */
 const matchesStatus = (bookmark, status) => {
     if (status === 'All') return true;
-    if (status === 'Automatic') return bookmark.status === 'Automatic';
+    if (status === 'Automatic') return autoStatus && bookmark.status === 'Automatic';
     return findStatus(bookmark) === status;
 };
 
@@ -130,6 +132,7 @@ const ROW_TEMPLATE = (() => {
     tr.children[1].appendChild(document.createElement('a'));
     tr.children[5].className = 'status-cell';
     tr.children[5].appendChild(Object.assign(document.createElement('span'), { className: 'status-badge' }));
+    tr.children[6].className = 'date-cell';
     const options = tr.children[7];
     options.className = 'options-cell';
     options.append(
@@ -167,7 +170,7 @@ const createRow = (bookmark) => {
         const select = Object.assign(document.createElement('select'), { className: 'status-select' });
         select.setAttribute('aria-label', 'Status');
         STATUSES.forEach((value) => select.append(new Option(value, value)));
-        select.value = STATUSES.includes(bookmark.status) ? bookmark.status : 'Automatic';
+        select.value = STATUSES.includes(bookmark.status) ? bookmark.status : 'Reading';
         change.after(select);
         select.focus();
         select.addEventListener('change', () => {
@@ -242,7 +245,7 @@ const createCard = (bookmark) => {
     cont.textContent = `Continue at chapter ${bookmark.chapter}`;
 
     const select = card.querySelector('.status-select');
-    select.value = STATUSES.includes(bookmark.status) ? bookmark.status : 'Automatic';
+    select.value = STATUSES.includes(bookmark.status) ? bookmark.status : 'Reading';
     select.addEventListener('change', () => {
         bookmark.status = select.value;
         chrome.storage.local.set({ [bookmark.id]: stored(bookmark) })
@@ -268,7 +271,7 @@ const render = () => {
         if (query && !searchText.get(bookmark).includes(query)) continue;
         counts.All++;
         counts[findStatus(bookmark)]++;
-        if (bookmark.status === 'Automatic') counts.Automatic++;
+        if (autoStatus && bookmark.status === 'Automatic') counts.Automatic++;
         if (matchesStatus(bookmark, activeStatus)) shown.push(bookmark);
     }
     sortList(shown);
@@ -341,53 +344,47 @@ const settingsPromise = chrome.storage.sync.get('settings').catch((error) => {
 Promise.all([settingsPromise, chrome.storage.local.get()])
     .then(([syncResult, saved]) => {
         const settings = syncResult.settings || {};
+        autoStatus = !!(settings.bookmarks && settings.autoStatus);
+        if (!autoStatus) {
+            STATUSES.splice(STATUSES.indexOf('Automatic'), 1);
+            CARD_TEMPLATE.querySelector('option[value="Automatic"]').remove();
+            document.querySelector('[data-status="Automatic"]').hidden = true;
+        }
         const validFmt = window.validateDateFormat(settings.dateFormat) === null
             ? settings.dateFormat
             : window.DEFAULT_DATE_FORMAT;
-        let needToUpdate = false;
         const loaded = [];
 
         for (const key in saved) {
-            const bookmark = saved[key];
-            if (bookmark.fandomName) {
+            const value = saved[key];
+            if (!value || typeof value !== 'object' || Array.isArray(value)) continue;
+            // Normalize a copy for display; simply opening this page must never rewrite storage.
+            const bookmark = { ...value };
+            if (!bookmark.fandom && bookmark.fandomName) {
                 bookmark.fandom = bookmark.fandomName;
-                delete bookmark.fandomName;
-                needToUpdate = true;
             }
 
-            if (bookmark.storyId) {
-                bookmark.id = bookmark.storyId;
-                delete bookmark.storyId;
-                needToUpdate = true;
-            }
+            if (!bookmark.id) bookmark.id = bookmark.storyId || key;
 
-            if (bookmark.addTime?.includes('/')) {
+            if (typeof bookmark.addTime === 'string' && bookmark.addTime.includes('/')) {
                 const [day, month, year] = bookmark.addTime.split('/');
-                bookmark.addTime = new Date(`${year}-${month}-${day}T00:00:00.000Z`).toISOString();
-                needToUpdate = true;
+                const date = new Date(`${year}-${month}-${day}T00:00:00.000Z`);
+                if (!Number.isNaN(date.getTime())) bookmark.addTime = date.toISOString();
             }
 
             if (!('status' in bookmark)) {
-                bookmark.status = 'Automatic';
-                needToUpdate = true;
+                bookmark.status = autoStatus ? 'Automatic' : 'Reading';
             }
 
             if (bookmark.storyName) {
                 const dateObj = bookmark.addTime && bookmark.addTime !== '-' ? new Date(bookmark.addTime) : null;
-                bookmark.displayDate = dateObj ? window.formatDate(dateObj, validFmt) : '-';
-                addTimeMs.set(bookmark, dateObj ? dateObj.getTime() : undefined);
+                const validDate = dateObj && !Number.isNaN(dateObj.getTime());
+                bookmark.displayDate = validDate ? window.formatDate(dateObj, validFmt) : '-';
+                addTimeMs.set(bookmark, validDate ? dateObj.getTime() : undefined);
                 searchText.set(bookmark, [bookmark.storyName, bookmark.author, bookmark.fandom]
                     .join(' ').toLowerCase());
                 loaded.push(bookmark);
             }
-        }
-
-        if (needToUpdate) {
-            chrome.storage.local.clear()
-                .then(() => chrome.storage.local.set(saved))
-                .then(() => location.reload())
-                .catch(console.error);
-            return;
         }
 
         bookmarks = loaded;
@@ -472,15 +469,26 @@ document.getElementById('import').addEventListener('click', () => {
             if (!jsonData || typeof jsonData !== 'object' || Array.isArray(jsonData)) {
                 throw new Error('The file is not a bookmarks file.');
             }
+            for (const [key, bookmark] of Object.entries(jsonData)) {
+                if (!/^\d+$/.test(key) || !bookmark || typeof bookmark !== 'object' || Array.isArray(bookmark)
+                    || String(bookmark.id ?? bookmark.storyId) !== key
+                    || (bookmark.chapter !== undefined && (!Number.isInteger(Number(bookmark.chapter)) || Number(bookmark.chapter) < 1))
+                    || (bookmark.storyName !== undefined && typeof bookmark.storyName !== 'string')
+                    || (bookmark.chapter === undefined && typeof bookmark.status !== 'string')) {
+                    throw new Error('The file contains an invalid bookmark.');
+                }
+            }
             const count = Object.values(jsonData).filter((b) => b && b.storyName).length;
             const ok = window.confirm(`Replace your ${bookmarks.length} bookmarks with the ${count} in this file?`);
             if (!ok) return;
-            await chrome.storage.local.clear();
+            const previous = await chrome.storage.local.get();
             await chrome.storage.local.set(jsonData);
+            const removedKeys = Object.keys(previous).filter((key) => /^\d+$/.test(key) && !Object.hasOwn(jsonData, key));
+            if (removedKeys.length) await chrome.storage.local.remove(removedKeys);
             location.reload();
         } catch (error) {
             console.error('Failed to import bookmarks from JSON file:', error);
-            noticeTextEl.textContent = 'That file could not be imported. Choose a file saved with Export.';
+            noticeTextEl.textContent = 'Import did not finish. Export your current bookmarks before retrying, and check that the file was saved with Export.';
             undoEl.hidden = true;
             noticeEl.hidden = false;
         }

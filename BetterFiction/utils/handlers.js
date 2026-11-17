@@ -10,7 +10,7 @@ const _getSettings = () => {
             .then(result => result.settings || {})
             .catch((error) => {
                 console.error('Failed to load settings:', error);
-                return {};
+                return null;
             });
     }
     return _settingsPromise;
@@ -22,6 +22,7 @@ const _bindSettingControls = (selector, prop, eventName, label) => {
     const elements = document.querySelectorAll(selector);
     if (!elements.length) return;
     _getSettings().then((settings) => {
+        if (!settings) return;
         elements.forEach(el => {
             if (settings[el.id] !== undefined) el[prop] = settings[el.id];
             el.addEventListener(eventName, () => {
