@@ -1,0 +1,28 @@
+# OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Local editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Dependencies and generated output
+node_modules/
+/dist/
+/build/
+/web-ext-artifacts/
+*.crx
+*.xpi
+
+# Logs and local environment
+*.log
+.env
+.env.*
+!.env.example
+
+AGENTS.md
+ABOUT.md
