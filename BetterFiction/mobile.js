@@ -36,7 +36,11 @@
     // ---------- bookmark icons and colours (the same as on the desktop site) ----------
     const icon = (d, fill, stroke) => 'data:image/svg+xml;base64,'
         + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/></svg>`);
-    const bookmarkIcon = (color) => icon('m6 4v16l6-2 6 2V4z', color, '#333298');
+    // In dark mode: a white outline and brighter fills, the same as the desktop site's dark mode
+    const DARK_FILLS = { '#096dd9': '#4ea4ff', '#d48806': '#ffc04d', '#389e0d': '#73d13d', '#cf1322': '#ff7875' };
+    const bookmarkIcon = (color) => (document.documentElement.classList.contains('bf-dark')
+        ? icon('m6 4v16l6-2 6 2V4z', DARK_FILLS[color] || color, '#ffffff')
+        : icon('m6 4v16l6-2 6 2V4z', color, '#333298'));
 
     /**
      * The colour of a bookmark, from its reading status (blue when Reading status is off).
@@ -61,13 +65,25 @@
     };
 
     /**
-     * Inverts a colour, for pages with a dark background (the same as the desktop site).
+     * A colour that reads on the dark theme: the same hue, mixed with white until it has 4.5:1 contrast
+     * against the darkest background it can sit on (a bookmarked story, #3a4560). Inverting the colour
+     * instead would change its hue (teal ratings turning red) and leave some too dark.
      * @param {string} color - "rgb(r, g, b)"
      * @returns {string}
      */
-    const invertColor = (color) => {
-        const [r, g, b] = color.match(/\d+/g).map(Number);
-        return `rgb(${255 - r}, ${255 - g}, ${255 - b})`;
+    const readableOnDark = (color) => {
+        const lum = (c) => {
+            const v = c.map((x) => { const s = x / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; });
+            return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+        };
+        const bg = lum([58, 69, 96]);
+        const base = color.match(/\d+/g).slice(0, 3).map(Number);
+        let mixed = base;
+        for (let w = 0; w <= 1; w += 0.05) {
+            mixed = base.map((x) => Math.round(x + (255 - x) * w));
+            if ((lum(mixed) + 0.05) / (bg + 0.05) >= 4.5) break;
+        }
+        return `rgb(${mixed.join(', ')})`;
     };
 
     // ---------- story details ("T, English, Drama & Humor, chapters: 97, ...") ----------
@@ -193,7 +209,7 @@
                     if (!span) return;
                     let color = COLORS[k];
                     if (typeof color === 'object') color = color[span.textContent.trim()] || color.default;
-                    span.style.setProperty('color', dark ? invertColor(color) : color, 'important');
+                    span.style.setProperty('color', dark ? readableOnDark(color) : color, 'important');
                     if (k === 'status') span.style.fontWeight = '600';
                 });
             };
@@ -448,6 +464,7 @@
             const status = mkEl('p', { className: 'bf-entire-status' });
             const retry = mkEl('button', { type: 'button', className: 'btn', textContent: 'Load more chapters', hidden: true });
             const pages = new Map([[chapter, { title: chapterTitleFrom(document), body: story }]]);
+            document.querySelector('#bf-chapter-nav')?.remove();
             storyBox.replaceChildren(holder, mkEl('div', { className: 'bf-entire-footer' }, [status, retry]));
 
             let next = 1;
@@ -492,6 +509,24 @@
         };
 
         if (bar.childNodes.length) storyBox.before(bar);
+
+        // The site's chapter links from the bottom of the page (« First « Prev Ch 3 of 10 Next »), copied above
+        // the story so you don't have to scroll to the end to move on. A copy of the site's own line, so it looks the same.
+        if (info.mobileChapterNav && chapters > 1) {
+            const bottom = Array.from(document.querySelectorAll('div[align="center"]')).find((div) =>
+                (story.compareDocumentPosition(div) & Node.DOCUMENT_POSITION_FOLLOWING) && /\bCh \d+ of\b/.test(div.textContent));
+            if (bottom) {
+                const nav = mkEl('div', { id: 'bf-chapter-nav' });
+                nav.setAttribute('align', 'center');
+                nav.setAttribute('role', 'navigation');
+                nav.setAttribute('aria-label', 'Chapters');
+                for (const node of bottom.childNodes) {
+                    if (node.nodeName === 'BR') break; // the Review button comes after
+                    nav.append(node.cloneNode(true));
+                }
+                (bar.isConnected ? bar : storyBox).before(nav);
+            }
+        }
         refresh();
 
         // "Bookmark new stories automatically": a story without a bookmark is bookmarked here.
@@ -517,7 +552,81 @@
 .bf-separate { border: 1px solid #969696; border-radius: 6px; margin: 0 4px 10px; padding: 6px 8px; }
 .bf-marked { background-color: #e1edff !important; }
 .bf-mark { margin-right: 4px; vertical-align: middle; }
+#bf-chapter-nav { margin: 8px 0; }
+#bf-menu { width: 100%; text-align: center; padding: 6px 0 4px; }
+#bf-menu .btn { margin: 3px; }
+.bf-more { font-size: 18px !important; font-weight: 600; padding: 8px 16px !important; margin: 4px 6px;
+    border: 1px solid #999; border-radius: 8px; cursor: pointer; line-height: 1.2; }
+#bf-filters { text-align: center; margin: 6px 0 10px; }
+#bf-filters > summary { display: inline-block; font-size: 16px; padding: 8px 18px; cursor: pointer; }
+#bf-filters #d_menu { margin-top: 8px; }
 `;
+
+    // ---------- navigation: the More menu, a bigger More button, filters at the top ----------
+    // Pages the mobile site keeps at a different address: [mobile, desktop] (the reverse of content-script.js)
+    const DESKTOP_PAGES = [
+        ['/m/acct.php', '/account/settings.php'],
+        ['/m/f_story.php', '/favorites/story.php'],
+        ['/m/f_author.php', '/favorites/author.php'],
+        ['/m/a_story.php', '/alert/story.php'],
+        ['/m/a_author.php', '/alert/author.php'],
+        ['/m/pm2/inbox.php', '/pm2/inbox.php'],
+        ['/m/login.php', '/login.php'],
+    ];
+    const PROFILE_URL_RE = /^https:\/\/www\.fanfiction\.net\/u\/\d+/;
+
+    /**
+     * The address of this page on the desktop site. Stories, lists and profiles keep their address;
+     * account pages under /m/ open their desktop page (other /m/ pages: the desktop home page).
+     * @returns {string}
+     */
+    const desktopUrl = () => {
+        const page = DESKTOP_PAGES.find(([mobile]) => mobile === location.pathname);
+        if (page) return `https://www.fanfiction.net${page[1]}`;
+        if (location.pathname.startsWith('/m/')) return 'https://www.fanfiction.net/';
+        return `https://www.fanfiction.net${location.pathname}${location.search}${location.hash}`;
+    };
+
+    /**
+     * The links the desktop site puts in its top bar, added to the site's "More" menu:
+     * Bookmarks, Favorites, Follows, your profile and the desktop site (each with its own setting).
+     * @param {Object} info
+     * @param {string} [profileUrl]
+     */
+    const moreMenu = (info, profileUrl) => {
+        const drop = document.querySelector('#t_drop');
+        if (!drop || drop.querySelector('#bf-menu')) return;
+        const items = [
+            info.bookmarks && ['Bookmarks', chrome.runtime.getURL('tabs/bookmarks/bookmarks.html')],
+            info.favoritesLink && ['Favorites', `${SITE}/m/f_story.php`],
+            info.followsLink && ['Follows', `${SITE}/m/a_story.php`],
+            info.profileLink && PROFILE_URL_RE.test(profileUrl || '')
+                && ['My profile', profileUrl.replace('https://www.fanfiction.net', SITE)],
+            info.siteSwitch && ['Desktop site', desktopUrl()],
+        ].filter(Boolean);
+        if (!items.length) return;
+        const row = mkEl('div', { id: 'bf-menu' });
+        items.forEach(([text, href]) => row.append(mkEl('a', { className: 'btn', href, textContent: text })));
+        (drop.firstElementChild || drop).append(mkEl('hr'), row);
+    };
+
+    /** Makes the site's small "More" button bigger and easier to tap. */
+    const biggerMoreButton = () => {
+        const more = document.querySelector('[onclick*="t_drop"]');
+        if (!more) return;
+        more.classList.add('bf-more');
+        more.setAttribute('role', 'button');
+        more.setAttribute('aria-controls', 't_drop');
+    };
+
+    /** Moves the filters from the bottom of story lists to the top, behind a "Filters" button. */
+    const filtersToTop = () => {
+        const filters = document.querySelector('#d_menu');
+        const firstStory = document.querySelector('#content div.bs');
+        if (!filters?.querySelector('form') || !firstStory) return;
+        const box = mkEl('details', { id: 'bf-filters' }, [mkEl('summary', { className: 'btn', textContent: 'Filters' }), filters]);
+        firstStory.before(box);
+    };
 
     const main = async () => {
         const ids = new Set();
@@ -531,6 +640,9 @@
             chrome.storage.sync.get('settings').then((r) => r.settings || {}).catch(() => ({})),
             ids.size ? chrome.storage.local.get([...ids]).catch(() => ({})) : Promise.resolve({}),
         ]);
+        const profileUrl = info.profileLink
+            ? await chrome.storage.sync.get('profileUrl').then((r) => r.profileUrl).catch(() => '')
+            : '';
         try {
             document.head.append(mkEl('style', { textContent: STYLE }));
             if (info.adblock) {
@@ -540,6 +652,9 @@
                     (box && box !== document.body && box.children.length === 1 ? box : ad).remove();
                 });
             }
+            moreMenu(info, profileUrl);
+            if (info.mobileBigMore) biggerMoreButton();
+            if (info.mobileFiltersTop) filtersToTop();
             storyLists(info, dir);
             if (current) storyPage(info, dir, current);
         } catch (error) {
