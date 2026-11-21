@@ -448,6 +448,7 @@
             const status = mkEl('p', { className: 'bf-entire-status' });
             const retry = mkEl('button', { type: 'button', className: 'btn', textContent: 'Load more chapters', hidden: true });
             const pages = new Map([[chapter, { title: chapterTitleFrom(document), body: story }]]);
+            document.querySelector('#bf-chapter-nav')?.remove();
             storyBox.replaceChildren(holder, mkEl('div', { className: 'bf-entire-footer' }, [status, retry]));
 
             let next = 1;
@@ -492,6 +493,19 @@
         };
 
         if (bar.childNodes.length) storyBox.before(bar);
+
+        // « First  « Prev  Ch 3 of 10  Next » above the story, so you don't have to scroll to the end to move on
+        if (info.mobileChapterNav && chapters > 1) {
+            const link = (text, n) => mkEl('a', { href: `${SITE}/s/${storyId}/${n}/`, textContent: text });
+            const parts = [];
+            if (chapter > 1) parts.push(link('« First', 1), link('« Prev', chapter - 1));
+            parts.push(mkEl('span', {}, [`Ch ${chapter} of `, link(String(chapters), chapters)]));
+            if (chapter < chapters) parts.push(link('Next »', chapter + 1));
+            const nav = mkEl('nav', { id: 'bf-chapter-nav' });
+            nav.setAttribute('aria-label', 'Chapters');
+            parts.forEach((part, i) => nav.append(...(i ? [' ', part] : [part])));
+            (bar.isConnected ? bar : storyBox).before(nav);
+        }
         refresh();
 
         // "Bookmark new stories automatically": a story without a bookmark is bookmarked here.
@@ -517,7 +531,82 @@
 .bf-separate { border: 1px solid #969696; border-radius: 6px; margin: 0 4px 10px; padding: 6px 8px; }
 .bf-marked { background-color: #e1edff !important; }
 .bf-mark { margin-right: 4px; vertical-align: middle; }
+#bf-chapter-nav { text-align: center; padding: 8px 10px; font-size: 16px; word-spacing: 2px; }
+#bf-chapter-nav a { display: inline-block; padding: 6px 4px; }
+#bf-menu { width: 100%; text-align: center; padding: 6px 0 4px; }
+#bf-menu .btn { margin: 3px; }
+.bf-more { font-size: 18px !important; font-weight: 600; padding: 8px 16px !important; margin: 4px 6px;
+    border: 1px solid #999; border-radius: 8px; cursor: pointer; line-height: 1.2; }
+#bf-filters { text-align: center; margin: 6px 0 10px; }
+#bf-filters > summary { display: inline-block; font-size: 16px; padding: 8px 18px; cursor: pointer; }
+#bf-filters #d_menu { margin-top: 8px; }
 `;
+
+    // ---------- navigation: the More menu, a bigger More button, filters at the top ----------
+    // Pages the mobile site keeps at a different address: [mobile, desktop] (the reverse of content-script.js)
+    const DESKTOP_PAGES = [
+        ['/m/acct.php', '/account/settings.php'],
+        ['/m/f_story.php', '/favorites/story.php'],
+        ['/m/f_author.php', '/favorites/author.php'],
+        ['/m/a_story.php', '/alert/story.php'],
+        ['/m/a_author.php', '/alert/author.php'],
+        ['/m/pm2/inbox.php', '/pm2/inbox.php'],
+        ['/m/login.php', '/login.php'],
+    ];
+    const PROFILE_URL_RE = /^https:\/\/www\.fanfiction\.net\/u\/\d+/;
+
+    /**
+     * The address of this page on the desktop site. Stories, lists and profiles keep their address;
+     * account pages under /m/ open their desktop page (other /m/ pages: the desktop home page).
+     * @returns {string}
+     */
+    const desktopUrl = () => {
+        const page = DESKTOP_PAGES.find(([mobile]) => mobile === location.pathname);
+        if (page) return `https://www.fanfiction.net${page[1]}`;
+        if (location.pathname.startsWith('/m/')) return 'https://www.fanfiction.net/';
+        return `https://www.fanfiction.net${location.pathname}${location.search}${location.hash}`;
+    };
+
+    /**
+     * The links the desktop site puts in its top bar, added to the site's "More" menu:
+     * Bookmarks, Favorites, Follows, your profile and the desktop site (each with its own setting).
+     * @param {Object} info
+     * @param {string} [profileUrl]
+     */
+    const moreMenu = (info, profileUrl) => {
+        const drop = document.querySelector('#t_drop');
+        if (!drop || drop.querySelector('#bf-menu')) return;
+        const items = [
+            info.bookmarks && ['Bookmarks', chrome.runtime.getURL('tabs/bookmarks/bookmarks.html')],
+            info.favoritesLink && ['Favorites', `${SITE}/m/f_story.php`],
+            info.followsLink && ['Follows', `${SITE}/m/a_story.php`],
+            info.profileLink && PROFILE_URL_RE.test(profileUrl || '')
+                && ['My profile', profileUrl.replace('https://www.fanfiction.net', SITE)],
+            info.siteSwitch && ['Desktop site', desktopUrl()],
+        ].filter(Boolean);
+        if (!items.length) return;
+        const row = mkEl('div', { id: 'bf-menu' });
+        items.forEach(([text, href]) => row.append(mkEl('a', { className: 'btn', href, textContent: text })));
+        (drop.firstElementChild || drop).append(mkEl('hr'), row);
+    };
+
+    /** Makes the site's small "More" button bigger and easier to tap. */
+    const biggerMoreButton = () => {
+        const more = document.querySelector('[onclick*="t_drop"]');
+        if (!more) return;
+        more.classList.add('bf-more');
+        more.setAttribute('role', 'button');
+        more.setAttribute('aria-controls', 't_drop');
+    };
+
+    /** Moves the filters from the bottom of story lists to the top, behind a "Filters" button. */
+    const filtersToTop = () => {
+        const filters = document.querySelector('#d_menu');
+        const firstStory = document.querySelector('#content div.bs');
+        if (!filters?.querySelector('form') || !firstStory) return;
+        const box = mkEl('details', { id: 'bf-filters' }, [mkEl('summary', { className: 'btn', textContent: 'Filters' }), filters]);
+        firstStory.before(box);
+    };
 
     const main = async () => {
         const ids = new Set();
@@ -531,6 +620,9 @@
             chrome.storage.sync.get('settings').then((r) => r.settings || {}).catch(() => ({})),
             ids.size ? chrome.storage.local.get([...ids]).catch(() => ({})) : Promise.resolve({}),
         ]);
+        const profileUrl = info.profileLink
+            ? await chrome.storage.sync.get('profileUrl').then((r) => r.profileUrl).catch(() => '')
+            : '';
         try {
             document.head.append(mkEl('style', { textContent: STYLE }));
             if (info.adblock) {
@@ -540,6 +632,9 @@
                     (box && box !== document.body && box.children.length === 1 ? box : ad).remove();
                 });
             }
+            moreMenu(info, profileUrl);
+            if (info.mobileBigMore) biggerMoreButton();
+            if (info.mobileFiltersTop) filtersToTop();
             storyLists(info, dir);
             if (current) storyPage(info, dir, current);
         } catch (error) {
