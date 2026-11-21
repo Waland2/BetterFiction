@@ -87,6 +87,29 @@ test('1.2.1 bookmark messages preserve stored date, status and unknown fields', 
     assert.deepEqual(app.local.data['123'], { ...record, extra: 'keep', chapter: 8 });
 });
 
+test('a stale chapter tab cannot delete a moved bookmark', async () => {
+    const app = background();
+    const send = action => new Promise(resolve => app.message({ id: '123', ...action }, {}, resolve));
+    const move = send({ message: 'set-bookmark', chapter: 8 });
+    const stale = send({ message: 'del-bookmark', chapter: 7 });
+    await move;
+    const current = { ...record, chapter: 8 };
+    assert.deepEqual((await stale).result.bookmark, current);
+    await send({ message: 'del-bookmark' }); // Older tabs cannot identify the chapter.
+    assert.deepEqual(app.local.data, { '123': current });
+    assert.equal((await send({ message: 'del-bookmark', chapter: 8 })).result.ok, true);
+    assert.deepEqual(app.local.data, {});
+});
+
+test('both manifests start dark mode on desktop and mobile pages', () => {
+    for (const file of ['manifest.json', 'firefox_manifest.json']) {
+        const scripts = JSON.parse(read(file)).content_scripts;
+        const theme = scripts.find(script => script.js.includes('dark-mode.js'));
+        assert.equal(theme.run_at, 'document_start');
+        for (const site of ['www', 'm']) assert.ok(theme.matches.includes(`https://${site}.fanfiction.net/*`));
+    }
+});
+
 const organizerLoad = async (initial) => {
     const local = storage(initial);
     const source = read('tabs/bookmarks/bookmarks.js');
@@ -200,9 +223,9 @@ test('failed settings load does not attach controls that could overwrite saved s
     assert.deepEqual(sync.writes, []);
 });
 
-test('moving a bookmark sends only a save and preserves its original added date', () => {
+test('moving a bookmark sends only a save and preserves its original added date', async () => {
     const source = read('content-script.js');
-    const start = source.indexOf('onclick: function() {', source.indexOf("id: `bookmark${ch}`"));
+    const start = source.indexOf('onclick: async function() {', source.indexOf("id: `bookmark${ch}`"));
     const end = source.indexOf('\n                }\n            });', start);
     assert.ok(start >= 0 && end > start);
     const messages = [];
@@ -216,7 +239,7 @@ test('moving a bookmark sends only a save and preserves its original added date'
         getBookmarkStatus: (info, status) => status, getBookmarkColor() {}, bookmarkIcon() {},
         sendMsg: message => messages.push(message), showLastRead() {}, qs() {},
     });
-    vm.runInContext('(' + source.slice(start + 'onclick: '.length, end) + '\n}).call({})', context);
+    await vm.runInContext('(' + source.slice(start + 'onclick: '.length, end) + '\n}).call({})', context);
     assert.equal(clicked, false);
     assert.deepEqual(messages.map(message => message.message), ['set-bookmark']);
     assert.equal(messages[0].addTime, record.addTime);

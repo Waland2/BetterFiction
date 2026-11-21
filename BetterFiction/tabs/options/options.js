@@ -63,10 +63,12 @@ getSettings().then((settings) => {
     const saveDateFormat = () => {
         const err = render();
         if (err) return;
-        settings.dateFormatMode = dateMode.value;
-        settings.customDateFormat = dateInput.value;
-        settings.dateFormat = dateMode.value === 'Custom' ? dateInput.value : dateMode.value;
-        chrome.storage.sync.set({ settings })
+        const custom = dateMode.value === 'Custom';
+        window.saveSettings({
+            dateFormatMode: dateMode.value,
+            dateFormat: custom ? dateInput.value : dateMode.value,
+            ...(custom && { customDateFormat: dateInput.value }),
+        })
             .catch((error) => {
                 console.error('Failed to save dateFormat:', error);
             });

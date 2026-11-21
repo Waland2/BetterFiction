@@ -173,14 +173,7 @@ const createRow = (bookmark) => {
         select.value = STATUSES.includes(bookmark.status) ? bookmark.status : 'Reading';
         change.after(select);
         select.focus();
-        select.addEventListener('change', () => {
-            bookmark.status = select.value;
-            chrome.storage.local.set({ [bookmark.id]: stored(bookmark) })
-                .catch((error) => {
-                    console.error(`Failed to update status for story ${bookmark.id}:`, error);
-                });
-            render();
-        });
+        select.addEventListener('change', () => changeStatus(bookmark, select.value));
     });
     row.querySelector('.delete-link').addEventListener('click', () => removeBookmark(bookmark));
     return row;
@@ -246,18 +239,27 @@ const createCard = (bookmark) => {
 
     const select = card.querySelector('.status-select');
     select.value = STATUSES.includes(bookmark.status) ? bookmark.status : 'Reading';
-    select.addEventListener('change', () => {
-        bookmark.status = select.value;
-        chrome.storage.local.set({ [bookmark.id]: stored(bookmark) })
-            .catch((error) => {
-                console.error(`Failed to update status for story ${bookmark.id}:`, error);
-            });
-        render();
-    });
+    select.addEventListener('change', () => changeStatus(bookmark, select.value));
 
     card.querySelector('.added').textContent = bookmark.displayDate === '-' ? '' : `Added ${bookmark.displayDate}`;
     card.querySelector('.remove').addEventListener('click', () => removeBookmark(bookmark));
     return card;
+};
+
+const changeStatus = async (bookmark, status) => {
+    try {
+        const { result } = await chrome.runtime.sendMessage({
+            message: 'set-status', id: bookmark.id, status, existingOnly: true,
+        });
+        if (!result.ok) throw new Error('Status could not be saved');
+        Object.assign(bookmark, result.bookmark);
+    } catch (error) {
+        console.error(`Failed to update status for story ${bookmark.id}:`, error);
+        noticeTextEl.textContent = 'Could not change the status. Reload bookmarks and try again.';
+        undoEl.hidden = true;
+        noticeEl.hidden = false;
+    }
+    render();
 };
 
 /**

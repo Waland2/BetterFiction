@@ -53,7 +53,7 @@ const bookmarkIconCache = new Map();
 const bookmarkIcon = c => {
     let r = bookmarkIconCache.get(c);
     if (r === undefined) {
-        r = `<svg xmlns="http://www.w3.org/2000/svg" class="bf-bookmark-icon" width="24" height="24" viewBox="0 0 24 24" style="vertical-align: middle;"><path d="m6 4v16l6-2 6 2V4z" fill="${c}" stroke="#000000" stroke-width="2"/></svg>`;
+        r = `<svg xmlns="http://www.w3.org/2000/svg" class="bf-bookmark-icon" width="24" height="24" viewBox="0 0 24 24" style="vertical-align: middle;"><path d="m6 4v16l6-2 6 2V4z" fill="${c}" stroke="#000000" stroke-width="1.5"/></svg>`;
         bookmarkIconCache.set(c, r);
     }
     return r;
@@ -330,7 +330,7 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
 
     const lastText = texts[texts.length - 1];
     const baseClass = lastText.className;
-    let orgAdded = false;
+    let orgAdded = !!document.getElementById('organizer-status-selecter');
 
     const { fandom, author, name, unmarked } = getStoryMeta(info);
 
@@ -359,16 +359,25 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
                 type: 'button', className: 'btn pull-right bookmark', title: 'bookmark',
                 innerHTML: entry?.chapter === ch ? bookmarkIcon(getBookmarkColor(info, dir, id, chapters, ch)) : unmarked,
                 id: `bookmark${ch}`, style: 'height: 30px;',
-                onclick: function() {
+                onclick: async function() {
                     const dirEntry = dir[id];
                     const orgSelector = document.getElementById('organizer-status-selecter');
                     if (dirEntry?.chapter === ch) {
-                        this.innerHTML = info.bookmarks ? UNMARKED_HTML : '';
-                        go.style.display = 'none';
-                        if (orgSelector) orgSelector.style.display = 'none';
-                        delete dir[id];
-                        sendMsg({ message: 'del-bookmark', id });
-                        showLastRead(info, qs('#profile_top'), id);
+                        const result = await sendMsg({ message: 'del-bookmark', id, chapter: ch });
+                        if (!result.ok || dir[id] !== dirEntry) return;
+                        const saved = result.bookmark;
+                        if (saved) dir[id] = saved;
+                        else delete dir[id];
+                        this.innerHTML = unmarked;
+                        const marked = document.getElementById(`bookmark${saved?.chapter}`);
+                        if (marked) marked.innerHTML = bookmarkIcon(getBookmarkColor(info, dir, id, chapters, saved.chapter));
+                        go.style.display = saved?.chapter ? '' : 'none';
+                        if (orgSelector) {
+                            orgSelector.style.display = saved?.status ? 'inline-flex' : 'none';
+                            const select = qs('select', orgSelector);
+                            if (select) select.value = getBookmarkStatus(info, saved?.status);
+                        }
+                        showLastRead(info, qs('#profile_top'), id, saved?.chapter);
                         return;
                     }
                     const previousButton = document.getElementById(`bookmark${dirEntry?.chapter || 0}`);
@@ -478,7 +487,7 @@ const main = async () => {
     try {
         info.adblock && document.querySelectorAll('.adsbygoogle').forEach(e => e.remove());
 
-        const baseCss = '.bf-bigcovers{height:115px}.bf-bigcovers .cimage{width:75px;height:100px}.bf-marked{background-color:#e1edff}.bf-desc-parent{height:auto;min-height:120px}.bf-grouped{display:flow-root;padding-left:0}.bf-grouped .idmeta{display:none}';
+        const baseCss = '.bf-bigcovers{height:115px}.bf-bigcovers .cimage{width:75px;height:100px}.bf-marked{background-color:#e1edff!important}.bf-desc-parent{height:auto;min-height:120px}.bf-grouped{display:flow-root;padding-left:0}.bf-grouped .idmeta{display:none}';
         document.head.appendChild(mkEl('style', {
             textContent: info.copy
                 ? baseCss + 'p{user-select:text!important;-webkit-user-select:text!important;}'
@@ -599,8 +608,7 @@ const main = async () => {
                     const ch = toNum(qs('.chaptersvalue', el)?.textContent, 1);
                     if (storyEntry.chapters !== ch) {
                         storyEntry.chapters = ch;
-                        storyEntry.message = 'set-bookmark';
-                        sendMsg(storyEntry);
+                        sendMsg({ message: 'set-bookmark', id: storyId, chapters: ch, existingOnly: true });
                     }
                     el.classList.add('bf-marked');
                     qs('div', el)?.insertAdjacentHTML('beforebegin',
@@ -625,8 +633,7 @@ const main = async () => {
             const dirEntry = dir[id];
             if (dirEntry && dirEntry.chapters !== chapters) {
                 dirEntry.chapters = chapters;
-                dirEntry.message = 'set-bookmark';
-                sendMsg(dirEntry);
+                sendMsg({ message: 'set-bookmark', id, chapters, existingOnly: true });
             }
 
             createStory(info, dir, id, chapters, selects, texts, follow);
@@ -641,9 +648,8 @@ const main = async () => {
                 btn.onclick = async () => {
                     btn.style.display = 'none';
                     btn.disabled = true;
-                    selects.forEach(el => { el.parentElement.style.display = 'none'; });
-                    document.getElementById(`separator${texts[0].id.substring(9)}`).remove();
-                    texts.shift().remove();
+                    const currentText = texts.shift();
+                    const currentSep = document.getElementById(`separator${chapter}`);
                     const finalSep = document.getElementById(`separator${chapters + 1}`);
                     let start = 1;
 
@@ -657,13 +663,18 @@ const main = async () => {
                         loadMore.style.display = 'none';
                         for (let ch = start; ch <= chapters; ch++) {
                             try {
-                                const response = await fetch(`https://www.fanfiction.net/s/${id}/${ch}`);
-                                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                                const parsed = parser.parseFromString(await response.text(), 'text/html');
-                                const chEl = parsed.getElementById('storytext');
-                                if (!chEl) break;
-                                chEl.id = `storytext${ch}`;
-                                finalSep.before(chEl);
+                                let chEl = currentText;
+                                if (ch === chapter) {
+                                    currentSep.remove();
+                                } else {
+                                    const response = await fetch(`https://www.fanfiction.net/s/${id}/${ch}`);
+                                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                    const parsed = parser.parseFromString(await response.text(), 'text/html');
+                                    chEl = parsed.getElementById('storytext');
+                                    if (!chEl) throw new Error('No story text in the page');
+                                    chEl.id = `storytext${ch}`;
+                                    (ch < chapter ? currentSep : finalSep).before(chEl);
+                                }
                                 texts.push(chEl);
                             } catch (e) {
                                 console.error(`Failed to fetch chapter ${ch}`, e);
@@ -674,8 +685,11 @@ const main = async () => {
                             createStory(info, dir, id, chapters, selects, texts, follow, true);
                             repaint();
                         }
+                        if (texts.length === chapters) {
+                            selects.forEach(el => { el.parentElement.style.display = 'none'; });
+                        }
                     };
-                    finalSep.children[2]?.after(loadMore);
+                    finalSep.append(loadMore);
                     loadMore.click();
                 };
 
