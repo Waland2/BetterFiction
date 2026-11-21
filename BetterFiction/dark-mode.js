@@ -1,4 +1,4 @@
-// BetterFiction dark mode for www.fanfiction.net: a dark grey (#333333) background on every page.
+// BetterFiction dark mode for the desktop and mobile sites.
 // Runs at document_start so the page doesn't flash white first. The last choice is also kept in the
 // site's own localStorage, so it can be applied before the extension settings have been read.
 (() => {
@@ -72,8 +72,12 @@ ${DARK} body .dropup .caret {
     border-bottom-color: #e6e6e6 !important;
 }
 
-/* The empty bookmark icon is drawn in dark blue: lighten it */
-${DARK} body button.bookmark img { filter: brightness(2.2); }
+/* White bookmark outlines and brighter status fills for the dark background. */
+${DARK} body .bf-bookmark-icon path { stroke: #ffffff !important; }
+${DARK} body .bf-bookmark-icon path[fill="#096dd9"] { fill: #4ea4ff !important; }
+${DARK} body .bf-bookmark-icon path[fill="#d48806"] { fill: #ffc04d !important; }
+${DARK} body .bf-bookmark-icon path[fill="#389e0d"] { fill: #73d13d !important; }
+${DARK} body .bf-bookmark-icon path[fill="#cf1322"] { fill: #ff7875 !important; }
 `;
 
     let style = null;

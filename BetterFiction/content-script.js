@@ -53,7 +53,7 @@ const bookmarkIconCache = new Map();
 const bookmarkIcon = c => {
     let r = bookmarkIconCache.get(c);
     if (r === undefined) {
-        r = icon('m6 4v16l6-2 6 2V4z', c, '#333298');
+        r = `<svg xmlns="http://www.w3.org/2000/svg" class="bf-bookmark-icon" width="24" height="24" viewBox="0 0 24 24" style="vertical-align: middle;"><path d="m6 4v16l6-2 6 2V4z" fill="${c}" stroke="#000000" stroke-width="1.5"/></svg>`;
         bookmarkIconCache.set(c, r);
     }
     return r;
@@ -95,8 +95,7 @@ const mobileUrl = (address) => {
     if (page) return `https://m.fanfiction.net${page[1]}`;
     return `https://m.fanfiction.net${url.pathname}${url.search}${url.hash}`;
 };
-const UNMARKED_ICON = bookmarkIcon('none');
-const UNMARKED_HTML = `<img src="${UNMARKED_ICON}" width="24" height="24">`;
+const UNMARKED_HTML = bookmarkIcon('none');
 
 const _invertCache = new Map();
 const invertColor = (c) => {
@@ -269,13 +268,20 @@ const showLastRead = (info, el, storyId, chapter) => {
     else desc.append(item);
 };
 
+const getBookmarkStatus = (info, status) => {
+    const automatic = info.bookmarks && info.autoStatus;
+    if (!STATUSES.includes(status)) return automatic ? 'Automatic' : 'Reading';
+    return status === 'Automatic' && !automatic ? 'Reading' : status;
+};
+
 const getBookmarkColor = (info, dir, id, ch, c) => {
     const entry = dir[id];
+    if (info.colorBookmarks === false) return '#389e0d';
     if (!info.organizer) return '#096dd9';
-    const status = entry?.status;
-    if (status === 'Completed' || (status === 'Automatic' && c === ch)) return '#237804';
+    const status = getBookmarkStatus(info, entry?.status);
+    if (status === 'Completed' || (status === 'Automatic' && c === ch)) return '#389e0d';
     if (status === 'Planned' || (status === 'Automatic' && c === 1)) return '#d48806';
-    if (status === 'Dropped') return '#a8071a';
+    if (status === 'Dropped') return '#cf1322';
     return '#096dd9';
 };
 
@@ -324,7 +330,7 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
 
     const lastText = texts[texts.length - 1];
     const baseClass = lastText.className;
-    let orgAdded = false;
+    let orgAdded = !!document.getElementById('organizer-status-selecter');
 
     const { fandom, author, name, unmarked } = getStoryMeta(info);
 
@@ -351,24 +357,34 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
 
             const btn = mkEl('button', {
                 type: 'button', className: 'btn pull-right bookmark', title: 'bookmark',
-                innerHTML: entry?.chapter === ch ? `<img src="${bookmarkIcon(getBookmarkColor(info, dir, id, chapters, ch))}" width="24" height="24">` : unmarked,
+                innerHTML: entry?.chapter === ch ? bookmarkIcon(getBookmarkColor(info, dir, id, chapters, ch)) : unmarked,
                 id: `bookmark${ch}`, style: 'height: 30px;',
-                onclick: function() {
+                onclick: async function() {
                     const dirEntry = dir[id];
                     const orgSelector = document.getElementById('organizer-status-selecter');
                     if (dirEntry?.chapter === ch) {
-                        this.innerHTML = info.bookmarks ? UNMARKED_HTML : '';
-                        go.style.display = 'none';
-                        if (orgSelector) orgSelector.style.display = 'none';
-                        delete dir[id];
-                        sendMsg({ message: 'del-bookmark', id });
-                        showLastRead(info, qs('#profile_top'), id);
+                        const result = await sendMsg({ message: 'del-bookmark', id, chapter: ch });
+                        if (!result.ok || dir[id] !== dirEntry) return;
+                        const saved = result.bookmark;
+                        if (saved) dir[id] = saved;
+                        else delete dir[id];
+                        this.innerHTML = unmarked;
+                        const marked = document.getElementById(`bookmark${saved?.chapter}`);
+                        if (marked) marked.innerHTML = bookmarkIcon(getBookmarkColor(info, dir, id, chapters, saved.chapter));
+                        go.style.display = saved?.chapter ? '' : 'none';
+                        if (orgSelector) {
+                            orgSelector.style.display = saved?.status ? 'inline-flex' : 'none';
+                            const select = qs('select', orgSelector);
+                            if (select) select.value = getBookmarkStatus(info, saved?.status);
+                        }
+                        showLastRead(info, qs('#profile_top'), id, saved?.chapter);
                         return;
                     }
-                    document.getElementById(`bookmark${dirEntry?.chapter || 0}`)?.click();
-                    const bm = { chapter: ch, chapters, id, fandom, author, storyName: name, addTime: new Date().toISOString(), status: dirEntry?.status || 'Automatic' };
+                    const previousButton = document.getElementById(`bookmark${dirEntry?.chapter || 0}`);
+                    if (previousButton) previousButton.innerHTML = unmarked;
+                    const bm = { chapter: ch, chapters, id, fandom, author, storyName: name, addTime: dirEntry?.addTime || new Date().toISOString(), status: getBookmarkStatus(info, dirEntry?.status) };
                     dir[id] = bm;
-                    this.innerHTML = `<img src="${bookmarkIcon(getBookmarkColor(info, dir, id, chapters, ch))}" width="24" height="24">`;
+                    this.innerHTML = bookmarkIcon(getBookmarkColor(info, dir, id, chapters, ch));
                     go.style.display = '';
                     if (orgSelector) orgSelector.style.display = '';
                     bm.message = 'set-bookmark';
@@ -382,11 +398,12 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
             if (info.organizer && id) {
                 if (!dir[id]) dir[id] = { id };
                 const orgEntry = dir[id];
-                const current = STATUSES.includes(orgEntry.status) ? orgEntry.status : 'Automatic';
+                const current = getBookmarkStatus(info, orgEntry.status);
+                const statuses = STATUSES.filter(s => s !== 'Automatic' || (info.bookmarks && info.autoStatus));
                 const wrap = mkEl('span', {
                     style: 'display:' + (orgEntry.status ? 'inline-flex' : 'none') + ';align-items:center;gap:6px;margin-inline:8px;',
                     id: 'organizer-status-selecter', className: 'pull-right',
-                    innerHTML: info.bookmarks ? `<span class="xcontrast_txt" style="font-size:12px;color:#4b5563;">Status:</span><select aria-label="Change reading status" style="height:30px;padding:2px 6px;font-size:12px;line-height:20px;border:1px solid #d1d5db;border-radius:6px;background:#fff;">${STATUSES.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('')}</select>` : '',
+                    innerHTML: info.bookmarks ? `<span class="xcontrast_txt" style="font-size:12px;color:#4b5563;">Status:</span><select aria-label="Change reading status" style="height:30px;padding:2px 6px;font-size:12px;line-height:20px;border:1px solid #d1d5db;border-radius:6px;background:#fff;">${statuses.map(s => `<option value="${s}" ${s === current ? 'selected' : ''}>${s}</option>`).join('')}</select>` : '',
                 });
                 qs('select', wrap)?.addEventListener('change', e => {
                     dir[id].status = e.target.value;
@@ -409,6 +426,11 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
         const ch = toNum(el.id.substring(9), 0);
         if (ch && !document.getElementById(`separator${ch}`)) el.before(makeSeparator(ch));
     }
+
+    // The status menu goes just left of "Go to bookmark" (both float right, so it's placed after it)
+    const statusWrap = document.getElementById('organizer-status-selecter');
+    const goButton = document.getElementById('gobutton');
+    if (statusWrap && goButton && goButton.nextElementSibling !== statusWrap) goButton.after(statusWrap);
 };
 
 /**
@@ -444,19 +466,28 @@ const loadInfoAndDir = () => {
                 return {};
             }),
         (ids.length ? chrome.storage.local.get(ids) : Promise.resolve({}))
+            .then((saved) => {
+                const dir = {};
+                for (const [id, bookmark] of Object.entries(saved)) {
+                    if (!bookmark || typeof bookmark !== 'object' || Array.isArray(bookmark)) continue;
+                    dir[id] = { ...bookmark, id, fandom: bookmark.fandom ?? bookmark.fandomName };
+                }
+                return dir;
+            })
             .catch((error) => {
                 console.error('Failed to load bookmarks for this page:', error);
-                return {};
+                return null;
             }),
     ]);
 };
 
 const main = async () => {
     const [info, dir] = await loadInfoAndDir();
+    if (!dir) return;
     try {
         info.adblock && document.querySelectorAll('.adsbygoogle').forEach(e => e.remove());
 
-        const baseCss = '.bf-bigcovers{height:115px}.bf-bigcovers .cimage{width:75px;height:100px}.bf-marked{background-color:#e1edff}.bf-desc-parent{height:auto;min-height:120px}.bf-grouped{display:flow-root;padding-left:0}.bf-grouped .idmeta{display:none}';
+        const baseCss = '.bf-bigcovers{height:115px}.bf-bigcovers .cimage{width:75px;height:100px}.bf-marked{background-color:#e1edff!important}.bf-desc-parent{height:auto;min-height:120px}.bf-grouped{display:flow-root;padding-left:0}.bf-grouped .idmeta{display:none}';
         document.head.appendChild(mkEl('style', {
             textContent: info.copy
                 ? baseCss + 'p{user-select:text!important;-webkit-user-select:text!important;}'
@@ -474,14 +505,14 @@ const main = async () => {
                 if (newTab) anchor.target = '_blank';
                 anchor.appendChild(mkEl('img', {
                     src: ico, width: 24, height: 24, title: name, alt: name,
-                    style: `vertical-align: middle; ${style}`,
+                    style: `vertical-align: middle; transform: scale(0.8); ${style}`,
                 }));
                 const span = mkEl('span');
                 span.appendChild(anchor);
                 return frag.appendChild(span);
             };
-            if (info.bookmarks) add('Bookmarks', bookmarkIcon('#fff'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), 'filter: drop-shadow(2px -1px 0px rgba(255,255,255,1));');
-            if (info.favoritesLink) add('Favorites', icon('m12 21-7-7C-6 4 10 0 12 6c2-6 18-1 7 8z', '#fff', '#333298'), 'https://www.fanfiction.net/favorites/story.php');
+            if (info.bookmarks) add('Bookmarks', chrome.runtime.getURL('icons/bookmarks.svg'), chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'));
+            if (info.favoritesLink) add('Favorites', icon('m12 21-7-7C-6 4 10 0 12 6c2-6 18-1 7 8z', '#fff', 'none'), 'https://www.fanfiction.net/favorites/story.php');
             if (info.followsLink) add('Alerts', icon('M7 4h2l3 1 10-1 1 1v14H1V5zM3 6v11h8V7C9 6 5 6 3 7m10-1v11h8V6zm7-6q1 8-1 11s-3 4-5 5q-1-9 1-11', '#fff', 'none'), 'https://www.fanfiction.net/alert/story.php');
             if (info.profileLink) {
                 // Your profile address is set on the settings page; the icon is added once it's read
@@ -577,14 +608,11 @@ const main = async () => {
                     const ch = toNum(qs('.chaptersvalue', el)?.textContent, 1);
                     if (storyEntry.chapters !== ch) {
                         storyEntry.chapters = ch;
-                        storyEntry.message = 'set-bookmark';
-                        sendMsg(storyEntry);
+                        sendMsg({ message: 'set-bookmark', id: storyId, chapters: ch, existingOnly: true });
                     }
                     el.classList.add('bf-marked');
-                    qs('div', el)?.before(mkEl('img', {
-                        src: bookmarkIcon(getBookmarkColor(info, dir, storyId, ch, storyEntry.chapter)),
-                        width: 24, height: 24
-                    }));
+                    qs('div', el)?.insertAdjacentHTML('beforebegin',
+                        bookmarkIcon(getBookmarkColor(info, dir, storyId, ch, storyEntry.chapter)));
                 }
             }
         }
@@ -605,8 +633,7 @@ const main = async () => {
             const dirEntry = dir[id];
             if (dirEntry && dirEntry.chapters !== chapters) {
                 dirEntry.chapters = chapters;
-                dirEntry.message = 'set-bookmark';
-                sendMsg(dirEntry);
+                sendMsg({ message: 'set-bookmark', id, chapters, existingOnly: true });
             }
 
             createStory(info, dir, id, chapters, selects, texts, follow);
@@ -621,9 +648,8 @@ const main = async () => {
                 btn.onclick = async () => {
                     btn.style.display = 'none';
                     btn.disabled = true;
-                    selects.forEach(el => { el.parentElement.style.display = 'none'; });
-                    document.getElementById(`separator${texts[0].id.substring(9)}`).remove();
-                    texts.shift().remove();
+                    const currentText = texts.shift();
+                    const currentSep = document.getElementById(`separator${chapter}`);
                     const finalSep = document.getElementById(`separator${chapters + 1}`);
                     let start = 1;
 
@@ -637,13 +663,18 @@ const main = async () => {
                         loadMore.style.display = 'none';
                         for (let ch = start; ch <= chapters; ch++) {
                             try {
-                                const response = await fetch(`https://www.fanfiction.net/s/${id}/${ch}`);
-                                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-                                const parsed = parser.parseFromString(await response.text(), 'text/html');
-                                const chEl = parsed.getElementById('storytext');
-                                if (!chEl) break;
-                                chEl.id = `storytext${ch}`;
-                                finalSep.before(chEl);
+                                let chEl = currentText;
+                                if (ch === chapter) {
+                                    currentSep.remove();
+                                } else {
+                                    const response = await fetch(`https://www.fanfiction.net/s/${id}/${ch}`);
+                                    if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                                    const parsed = parser.parseFromString(await response.text(), 'text/html');
+                                    chEl = parsed.getElementById('storytext');
+                                    if (!chEl) throw new Error('No story text in the page');
+                                    chEl.id = `storytext${ch}`;
+                                    (ch < chapter ? currentSep : finalSep).before(chEl);
+                                }
                                 texts.push(chEl);
                             } catch (e) {
                                 console.error(`Failed to fetch chapter ${ch}`, e);
@@ -654,8 +685,11 @@ const main = async () => {
                             createStory(info, dir, id, chapters, selects, texts, follow, true);
                             repaint();
                         }
+                        if (texts.length === chapters) {
+                            selects.forEach(el => { el.parentElement.style.display = 'none'; });
+                        }
                     };
-                    finalSep.children[2]?.after(loadMore);
+                    finalSep.append(loadMore);
                     loadMore.click();
                 };
 
@@ -676,4 +710,47 @@ const main = async () => {
     }
 };
 
+const showUpdateNotice = async () => {
+    if (!document.body) return;
+    const { version } = await sendMsg({ message: 'get-update-notice' });
+    if (!version) return;
+    const host = mkEl('div');
+    host.style.cssText = 'position: fixed; bottom: 16px; right: 16px; width: min(360px, calc(100vw - 32px)); z-index: 2147483647;';
+    const shadow = host.attachShadow({ mode: 'closed' });
+    const style = mkEl('style', { textContent: `
+        section { box-sizing: border-box; padding: 20px; border: 1px solid #888;
+            border-radius: 12px; background: Canvas; color: CanvasText;
+            box-shadow: 0 4px 24px #0003; font: 14px/1.5 Arial, sans-serif; }
+        h2 { margin: 0 0 8px; font-size: 18px; }
+        p { margin: 0 0 16px; }
+        div { display: flex; flex-wrap: wrap; gap: 8px; }
+        a, button { box-sizing: border-box; padding: 7px 12px; border: 1px solid #888;
+            border-radius: 6px; background: Canvas; color: CanvasText;
+            font: inherit; text-decoration: none; cursor: pointer; }
+        a:hover, button:hover { text-decoration: underline; }
+        a:focus-visible, button:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
+    ` });
+    const panel = mkEl('section');
+    panel.setAttribute('role', 'status');
+    const title = mkEl('h2', { textContent: `BetterFiction ${version}` });
+    const message = mkEl('p', {
+        textContent: version === '1.4.0'
+            ? 'BetterFiction has been updated! Discover new features and dark mode.'
+            : 'BetterFiction has been updated.'
+    });
+    const actions = mkEl('div');
+    const settings = mkEl('a', {
+        textContent: 'Open settings', href: chrome.runtime.getURL('tabs/options/options.html'),
+        target: '_blank', rel: 'noopener', onclick: () => host.remove()
+    });
+    const close = mkEl('button', {
+        type: 'button', textContent: 'Close', onclick: () => host.remove()
+    });
+    actions.append(settings, close);
+    panel.append(title, message, actions);
+    shadow.append(style, panel);
+    document.body.append(host);
+};
+
+showUpdateNotice().catch(error => console.error('Failed to show update notice:', error));
 main();

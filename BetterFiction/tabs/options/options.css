@@ -220,6 +220,7 @@ section h2 {
 }
 
 .switch:focus-visible,
+select:focus-visible,
 input[type='text']:focus-visible,
 input[type='url']:focus-visible,
 a:focus-visible {
@@ -238,6 +239,7 @@ a:focus-visible {
 }
 
 .row.field input[type='text'],
+.row.field select,
 .row.field input[type='url'] {
     width: 240px;
     max-width: 100%;
@@ -251,6 +253,8 @@ a:focus-visible {
 }
 
 .row.field input[type='text']:hover,
+.row.field select:hover,
+.row.field select:focus,
 .row.field input[type='text']:focus,
 .row.field input[type='url']:hover,
 .row.field input[type='url']:focus {
@@ -288,6 +292,15 @@ a:focus-visible {
 
 .date-format-error {
     color: var(--error);
+}
+
+.row:has(.switch:disabled) {
+    opacity: 0.5;
+    cursor: default;
+}
+
+.switch:disabled {
+    cursor: default;
 }
 
 .row.field input.wide {

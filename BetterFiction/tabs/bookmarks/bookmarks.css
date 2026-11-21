@@ -299,6 +299,7 @@ select:focus-visible {
     text-decoration: underline;
 }
 
+.date-cell,
 .options-cell {
     white-space: nowrap;
 }

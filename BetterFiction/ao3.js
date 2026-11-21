@@ -35,12 +35,19 @@
      * @returns {string}
      */
     const bookmarkColor = (info, entry, chapters) => {
+        if (info.colorBookmarks === false) return '#389e0d';
         if (!info.organizer) return '#096dd9';
-        const status = entry?.status;
-        if (status === 'Completed' || (status === 'Automatic' && entry.chapter === chapters)) return '#237804';
+        const status = bookmarkStatus(info, entry?.status);
+        if (status === 'Completed' || (status === 'Automatic' && entry.chapter === chapters)) return '#389e0d';
         if (status === 'Planned' || (status === 'Automatic' && entry.chapter === 1)) return '#d48806';
-        if (status === 'Dropped') return '#a8071a';
+        if (status === 'Dropped') return '#cf1322';
         return '#096dd9';
+    };
+
+    // The same as FanFiction.net: "Automatic" only when automatic status is on
+    const bookmarkStatus = (info, status) => {
+        if (status && status !== 'Automatic' && STATUSES.includes(status)) return status;
+        return info.bookmarks && info.autoStatus ? 'Automatic' : 'Reading';
     };
 
     /**
@@ -89,7 +96,7 @@
             // Keep the chapter count up to date, as on FanFiction.net
             if (entry.chapters !== chapters) {
                 entry.chapters = chapters;
-                sendMsg({ ...entry, message: 'set-bookmark' });
+                sendMsg({ message: 'set-bookmark', id: key(workId), chapters, existingOnly: true });
             }
         });
     };
@@ -138,7 +145,8 @@
         if (info.organizer) {
             statusSelect = mkEl('select');
             statusSelect.setAttribute('aria-label', 'Change reading status');
-            STATUSES.forEach((status) => statusSelect.append(new Option(status, status)));
+            STATUSES.filter((status) => status !== 'Automatic' || info.autoStatus)
+                .forEach((status) => statusSelect.append(new Option(status, status)));
             statusSelect.addEventListener('change', () => {
                 if (!dir[k]) return;
                 dir[k].status = statusSelect.value;
@@ -159,23 +167,28 @@
             bookmarkButton.setAttribute('aria-pressed', String(here));
             goButton.parentElement.style.display = entry?.chapter ? '' : 'none';
             statusLi.style.display = entry?.chapter && statusSelect ? '' : 'none';
-            if (statusSelect) statusSelect.value = STATUSES.includes(entry?.status) ? entry.status : 'Automatic';
+            if (statusSelect) statusSelect.value = bookmarkStatus(info, entry?.status);
             if (info.lastRead) showLastRead(document.querySelector('dl.work.meta dl.stats'), entry, workId);
         };
 
         const save = () => {
-            const status = dir[k]?.status || 'Automatic';
+            const status = bookmarkStatus(info, dir[k]?.status);
+            const addTime = dir[k]?.addTime || new Date().toISOString();
             dir[k] = {
-                id: k, chapter, chapters, fandom, author, storyName, addTime: new Date().toISOString(), status, site: 'ao3', url,
+                id: k, chapter, chapters, fandom, author, storyName, addTime, status, site: 'ao3', url,
             };
             sendMsg({ ...dir[k], message: 'set-bookmark' });
             render();
         };
 
-        bookmarkButton.addEventListener('click', () => {
+        bookmarkButton.addEventListener('click', async () => {
             if (dir[k]?.chapter === chapter) {
-                delete dir[k];
-                sendMsg({ message: 'del-bookmark', id: k });
+                // Removed only if it's still at this chapter (another tab may have moved it)
+                const entry = dir[k];
+                const { result } = await sendMsg({ message: 'del-bookmark', id: k, chapter });
+                if (!result?.ok || dir[k] !== entry) return;
+                if (result.bookmark) dir[k] = result.bookmark;
+                else delete dir[k];
                 render();
             } else {
                 save();
@@ -202,7 +215,7 @@
 .bf-bookmark img { display: block; }
 ul.actions li.bf-status { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
 ul.actions li.bf-status select { width: auto; min-width: 0; }
-li.blurb.bf-marked { background-color: #e1edff; }
+li.blurb.bf-marked { background-color: #e1edff !important; }
 .bf-mark { margin-right: 4px; vertical-align: -3px; }
 `;
 
