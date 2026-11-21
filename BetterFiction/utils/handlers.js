@@ -18,6 +18,11 @@ const _getSettings = () => {
 
 window.getSettings = _getSettings;
 
+window.saveSettings = async (changes) => {
+    const response = await chrome.runtime.sendMessage({ message: 'set-settings', changes });
+    if (!response?.result.ok) throw new Error('Settings could not be saved');
+};
+
 const _bindSettingControls = (selector, prop, eventName, label) => {
     const elements = document.querySelectorAll(selector);
     if (!elements.length) return;
@@ -26,8 +31,7 @@ const _bindSettingControls = (selector, prop, eventName, label) => {
         elements.forEach(el => {
             if (settings[el.id] !== undefined) el[prop] = settings[el.id];
             el.addEventListener(eventName, () => {
-                settings[el.id] = el[prop];
-                chrome.storage.sync.set({ settings })
+                window.saveSettings({ [el.id]: el[prop] })
                     .catch((error) => {
                         console.error(`Failed to save ${label} state for ${el.id}:`, error);
                     });

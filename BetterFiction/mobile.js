@@ -35,7 +35,7 @@
 
     // ---------- bookmark icons and colours (the same as on the desktop site) ----------
     const icon = (d, fill, stroke) => 'data:image/svg+xml;base64,'
-        + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="2"/></svg>`);
+        + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="${d}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/></svg>`);
     const bookmarkIcon = (color) => icon('m6 4v16l6-2 6 2V4z', color, '#333298');
 
     /**
@@ -46,12 +46,18 @@
      * @returns {string}
      */
     const bookmarkColor = (info, entry, chapters) => {
+        if (info.colorBookmarks === false) return '#389e0d';
         if (!info.organizer) return '#096dd9';
-        const status = entry?.status;
-        if (status === 'Completed' || (status === 'Automatic' && entry.chapter === chapters)) return '#237804';
+        const status = bookmarkStatus(info, entry?.status);
+        if (status === 'Completed' || (status === 'Automatic' && entry.chapter === chapters)) return '#389e0d';
         if (status === 'Planned' || (status === 'Automatic' && entry.chapter === 1)) return '#d48806';
-        if (status === 'Dropped') return '#a8071a';
+        if (status === 'Dropped') return '#cf1322';
         return '#096dd9';
+    };
+
+    const bookmarkStatus = (info, status) => {
+        if (status && status !== 'Automatic' && STATUSES.includes(status)) return status;
+        return info.bookmarks && info.autoStatus ? 'Automatic' : 'Reading';
     };
 
     /**
@@ -258,7 +264,7 @@
                 // Keep the chapter count up to date, as the desktop site does
                 if (saved.chapters !== chapters) {
                     saved.chapters = chapters;
-                    sendMsg({ ...saved, message: 'set-bookmark' });
+                    sendMsg({ message: 'set-bookmark', id: storyId, chapters, existingOnly: true });
                 }
             }
             if (details) {
@@ -336,21 +342,25 @@
         const bookmarkButtons = [];
 
         const save = (ch) => {
-            const status = dir[storyId]?.status || 'Automatic';
-            dir[storyId] = { id: storyId, chapter: ch, chapters, fandom, author, storyName, addTime: new Date().toISOString(), status };
+            const status = bookmarkStatus(info, dir[storyId]?.status);
+            const addTime = dir[storyId]?.addTime || new Date().toISOString();
+            dir[storyId] = { id: storyId, chapter: ch, chapters, fandom, author, storyName, addTime, status };
             sendMsg({ ...dir[storyId], message: 'set-bookmark' });
             refresh();
         };
-        const remove = () => {
-            delete dir[storyId];
-            sendMsg({ message: 'del-bookmark', id: storyId });
+        const remove = async (ch) => {
+            const entry = dir[storyId];
+            const { result } = await sendMsg({ message: 'del-bookmark', id: storyId, chapter: ch });
+            if (!result?.ok || dir[storyId] !== entry) return;
+            if (result.bookmark) dir[storyId] = result.bookmark;
+            else delete dir[storyId];
             refresh();
         };
 
         const bookmarkButton = (ch) => {
             const button = mkEl('button', { type: 'button', className: 'btn bf-bookmark bookmark' });
             button.dataset.chapter = String(ch);
-            button.addEventListener('click', () => (dir[storyId]?.chapter === ch ? remove() : save(ch)));
+            button.addEventListener('click', () => (dir[storyId]?.chapter === ch ? remove(ch) : save(ch)));
             bookmarkButtons.push(button);
             return button;
         };
@@ -381,7 +391,7 @@
             goButton.style.display = saved ? '' : 'none';
             if (statusWrap) {
                 statusWrap.style.display = saved ? '' : 'none';
-                statusSelect.value = STATUSES.includes(entry?.status) ? entry.status : 'Automatic';
+                statusSelect.value = bookmarkStatus(info, entry?.status);
             }
             if (detailsBox) showLastRead(info, detailsBox, storyId, saved, chapters);
         };
@@ -391,7 +401,8 @@
             if (info.organizer) {
                 statusSelect = mkEl('select');
                 statusSelect.setAttribute('aria-label', 'Change reading status');
-                STATUSES.forEach((status) => statusSelect.append(new Option(status, status)));
+                STATUSES.filter(status => status !== 'Automatic' || info.autoStatus)
+                    .forEach(status => statusSelect.append(new Option(status, status)));
                 statusSelect.addEventListener('change', () => {
                     if (!dir[storyId]) return;
                     dir[storyId].status = statusSelect.value;
@@ -504,7 +515,7 @@
 .bf-chapter-heading h3 { margin: 0; font-size: 1.05em; flex: 1; min-width: 150px; }
 .bf-entire-footer { text-align: center; padding: 10px; }
 .bf-separate { border: 1px solid #969696; border-radius: 6px; margin: 0 4px 10px; padding: 6px 8px; }
-.bf-marked { background-color: #e1edff; }
+.bf-marked { background-color: #e1edff !important; }
 .bf-mark { margin-right: 4px; vertical-align: middle; }
 `;
 

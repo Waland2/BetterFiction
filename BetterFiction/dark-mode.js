@@ -1,4 +1,4 @@
-// BetterFiction dark mode for www.fanfiction.net: a dark grey (#333333) background on every page.
+// BetterFiction dark mode for the desktop and mobile sites.
 // Runs at document_start so the page doesn't flash white first. The last choice is also kept in the
 // site's own localStorage, so it can be applied before the extension settings have been read.
 (() => {

@@ -16,7 +16,7 @@
     },
     "content_scripts": [
         {
-            "matches": ["https://www.fanfiction.net/*"],
+            "matches": ["https://www.fanfiction.net/*", "https://m.fanfiction.net/*"],
             "run_at": "document_start",
             "js": ["dark-mode.js"]
         },

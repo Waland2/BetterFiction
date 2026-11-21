@@ -61,6 +61,14 @@ const legacyMap = {
 };
 const legacyMapKeys = Object.keys(legacyMap);
 let updateNoticeQueue = Promise.resolve();
+let storageQueue = Promise.resolve();
+
+// A read/modify/write must finish before another tab reads the same record.
+const queueWrite = (write) => {
+    const result = storageQueue.then(write);
+    storageQueue = result.catch(() => {});
+    return result;
+};
 
 chrome.runtime.onInstalled.addListener((details) => {
     const version = chrome.runtime.getManifest().version;
@@ -74,30 +82,29 @@ chrome.runtime.onInstalled.addListener((details) => {
     primaryFunctions.forEach(setting => defaultSettings[setting] = primaryDefaults[setting] ?? false);
     secondaryFunctions.forEach(setting => defaultSettings[setting] = true);
 
-    chrome.storage.sync.get('settings')
-        .then((result) => {
-            const settings = result.settings;
-            if (settings) {
-                Object.assign(defaultSettings, settings);
-                // "Icons for quick navigation" used to be one switch for both Favorites and Follows
-                if (settings.shortcuts !== undefined) {
-                    ['favoritesLink', 'followsLink'].forEach((setting) => {
-                        if (settings[setting] === undefined) defaultSettings[setting] = settings.shortcuts;
-                    });
-                }
-                // compatibility with old version settings
-                for (let i = 0; i < legacyMapKeys.length; i++) {
-                    const oldKey = legacyMapKeys[i];
-                    if (settings[oldKey] !== undefined && settings[legacyMap[oldKey]] === undefined) {
-                        defaultSettings[legacyMap[oldKey]] = settings[oldKey];
-                    }
+    queueWrite(async () => {
+        const { settings } = await chrome.storage.sync.get('settings');
+        if (settings) {
+            Object.assign(defaultSettings, settings);
+            // "Icons for quick navigation" used to be one switch for both Favorites and Follows
+            if (settings.shortcuts !== undefined) {
+                ['favoritesLink', 'followsLink'].forEach((setting) => {
+                    if (settings[setting] === undefined) defaultSettings[setting] = settings.shortcuts;
+                });
+            }
+            // compatibility with old version settings
+            for (let i = 0; i < legacyMapKeys.length; i++) {
+                const oldKey = legacyMapKeys[i];
+                if (settings[oldKey] !== undefined && settings[legacyMap[oldKey]] === undefined) {
+                    defaultSettings[legacyMap[oldKey]] = settings[oldKey];
                 }
             }
+        }
 
-            return chrome.storage.sync.set({
-                settings: defaultSettings
-            });
-        })
+        return chrome.storage.sync.set({
+            settings: defaultSettings
+        });
+    })
         .catch((error) => {
             console.error('Failed to initialize extension settings during installation:', error);
         });
@@ -124,42 +131,38 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
         });
         return true;
     }
-    if (action.message === 'set-bookmark') {
-        chrome.storage.local.get(action.id)
-            .then((data) => {
-                const updated = { ...data[action.id], id: action.id };
-                for (const key of ['chapter', 'chapters', 'fandom', 'author', 'storyName', 'addTime', 'status']) {
-                    if (action[key] !== undefined) updated[key] = action[key];
-                }
-                if (!updated.addTime) updated.addTime = new Date().toISOString();
-                if (!updated.status) updated.status = 'Reading';
-                return chrome.storage.local.set({ [action.id]: updated });
-            })
-            .catch((error) => {
-                console.error(`Failed to save bookmark for story ${action.id}:`, error);
-            });
-    } else if (action.message === 'del-bookmark') {
-        chrome.storage.local.remove(action.id)
-            .catch((error) => {
-                console.error(`Failed to delete bookmark for story ${action.id}:`, error);
-            });
-    }
-    else if (action.message === 'set-status') {
-        chrome.storage.local.get(action.id)
-            .then(data => data[action.id] || { id: action.id })
-            .then((existing) => {
-                const updated = { ...existing, status: action.status };
-                if (!updated.addTime) updated.addTime = new Date().toISOString();
-                return chrome.storage.local.set({ [action.id]: updated });
-            })
-            .then(() => {
-                sendResponse({ result: { ok: true } });
-            })
-            .catch((error) => {
-                console.error(`Failed to set status for story ${action.id}:`, error);
-                sendResponse({ result: { ok: false } });
-            });
-    }
+    if (!['set-settings', 'set-bookmark', 'del-bookmark', 'set-status'].includes(action.message)) return;
+    queueWrite(async () => {
+        if (action.message === 'set-settings') {
+            const { settings } = await chrome.storage.sync.get('settings');
+            await chrome.storage.sync.set({ settings: { ...settings, ...action.changes } });
+            return;
+        }
+        const data = await chrome.storage.local.get(action.id);
+        const existing = data[action.id];
+        if (action.message === 'del-bookmark') {
+            if (!action.chapter || Number(existing?.chapter) !== action.chapter) return existing;
+            await chrome.storage.local.remove(action.id);
+            return;
+        }
+        if (!existing && action.existingOnly) throw new Error('Bookmark no longer exists');
+        const updated = { ...existing, id: action.id };
+        if (action.message === 'set-status') {
+            updated.status = action.status;
+        } else {
+            for (const key of ['chapter', 'chapters', 'fandom', 'author', 'storyName']) {
+                if (action[key] !== undefined) updated[key] = action[key];
+            }
+            if (!updated.status) updated.status = action.status || 'Reading';
+        }
+        if (!updated.addTime) updated.addTime = action.addTime || new Date().toISOString();
+        await chrome.storage.local.set({ [action.id]: updated });
+        return updated;
+    }).then(bookmark => sendResponse({ result: { ok: true, bookmark } }))
+        .catch(error => {
+            console.error(`Failed to apply ${action.message}:`, error);
+            sendResponse({ result: { ok: false } });
+        });
     return true;
 });
 
