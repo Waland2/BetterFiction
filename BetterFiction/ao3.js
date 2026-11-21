@@ -216,8 +216,22 @@
 ul.actions li.bf-status { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
 ul.actions li.bf-status select { width: auto; min-width: 0; }
 li.blurb.bf-marked { background-color: rgba(24, 144, 255, 0.13) !important; }
+.bf-dark-skin li.blurb.bf-marked { background-color: rgba(0, 40, 90, 0.35) !important; }
 .bf-mark { margin-right: 4px; vertical-align: -3px; }
 `;
+
+    /**
+     * Whether the works are shown on a dark background (a dark AO3 skin, like Reversi). Marked works then get a
+     * darker tint instead of a lighter one, so AO3's light text and links stay readable.
+     * @returns {boolean}
+     */
+    const darkSkin = () => {
+        const sample = [document.querySelector('li.blurb'), document.body, document.documentElement]
+            .map((node) => node && getComputedStyle(node).backgroundColor)
+            .find((color) => color && !/^rgba\(\d+, \d+, \d+, 0\)$|^transparent$/.test(color));
+        const [r, g, b] = (sample?.match(/\d+/g) || [255, 255, 255]).map(Number);
+        return 0.299 * r + 0.587 * g + 0.114 * b < 128;
+    };
 
     const main = async () => {
         const keys = new Set();
@@ -234,6 +248,7 @@ li.blurb.bf-marked { background-color: rgba(24, 144, 255, 0.13) !important; }
         if (info.ao3Enabled === false || !info.bookmarks) return;
         try {
             document.head.append(mkEl('style', { textContent: STYLE }));
+            if (darkSkin()) document.documentElement.classList.add('bf-dark-skin');
             markBlurbs(info, dir);
             if (current) workPage(info, dir, current);
         } catch (error) {
