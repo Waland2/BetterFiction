@@ -494,17 +494,22 @@
 
         if (bar.childNodes.length) storyBox.before(bar);
 
-        // « First  « Prev  Ch 3 of 10  Next » above the story, so you don't have to scroll to the end to move on
+        // The site's chapter links from the bottom of the page (« First « Prev Ch 3 of 10 Next »), copied above
+        // the story so you don't have to scroll to the end to move on. A copy of the site's own line, so it looks the same.
         if (info.mobileChapterNav && chapters > 1) {
-            const link = (text, n) => mkEl('a', { href: `${SITE}/s/${storyId}/${n}/`, textContent: text });
-            const parts = [];
-            if (chapter > 1) parts.push(link('« First', 1), link('« Prev', chapter - 1));
-            parts.push(mkEl('span', {}, [`Ch ${chapter} of `, link(String(chapters), chapters)]));
-            if (chapter < chapters) parts.push(link('Next »', chapter + 1));
-            const nav = mkEl('nav', { id: 'bf-chapter-nav' });
-            nav.setAttribute('aria-label', 'Chapters');
-            parts.forEach((part, i) => nav.append(...(i ? [' ', part] : [part])));
-            (bar.isConnected ? bar : storyBox).before(nav);
+            const bottom = Array.from(document.querySelectorAll('div[align="center"]')).find((div) =>
+                (story.compareDocumentPosition(div) & Node.DOCUMENT_POSITION_FOLLOWING) && /\bCh \d+ of\b/.test(div.textContent));
+            if (bottom) {
+                const nav = mkEl('div', { id: 'bf-chapter-nav' });
+                nav.setAttribute('align', 'center');
+                nav.setAttribute('role', 'navigation');
+                nav.setAttribute('aria-label', 'Chapters');
+                for (const node of bottom.childNodes) {
+                    if (node.nodeName === 'BR') break; // the Review button comes after
+                    nav.append(node.cloneNode(true));
+                }
+                (bar.isConnected ? bar : storyBox).before(nav);
+            }
         }
         refresh();
 
@@ -531,8 +536,7 @@
 .bf-separate { border: 1px solid #969696; border-radius: 6px; margin: 0 4px 10px; padding: 6px 8px; }
 .bf-marked { background-color: #e1edff !important; }
 .bf-mark { margin-right: 4px; vertical-align: middle; }
-#bf-chapter-nav { text-align: center; padding: 8px 10px; font-size: 16px; word-spacing: 2px; }
-#bf-chapter-nav a { display: inline-block; padding: 6px 4px; }
+#bf-chapter-nav { margin: 8px 0; }
 #bf-menu { width: 100%; text-align: center; padding: 6px 0 4px; }
 #bf-menu .btn { margin: 3px; }
 .bf-more { font-size: 18px !important; font-weight: 600; padding: 8px 16px !important; margin: 4px 6px;
