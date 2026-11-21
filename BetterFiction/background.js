@@ -5,6 +5,7 @@
  */
 const primaryFunctions = [
     'autoSave',
+    'autoBookmarkNew',
     'markBookmarks',
     'lastRead',
     'organizer',
@@ -86,6 +87,11 @@ chrome.runtime.onInstalled.addListener((details) => {
         const { settings } = await chrome.storage.sync.get('settings');
         if (settings) {
             Object.assign(defaultSettings, settings);
+            // "Bookmark automatically" used to also bookmark every story you opened; that's now its own
+            // switch, so people who had it on keep both behaviours until they choose otherwise
+            if (settings.autoBookmarkNew === undefined && settings.autoSave !== undefined) {
+                defaultSettings.autoBookmarkNew = settings.autoSave;
+            }
             // "Icons for quick navigation" used to be one switch for both Favorites and Follows
             if (settings.shortcuts !== undefined) {
                 ['favoritesLink', 'followsLink'].forEach((setting) => {
