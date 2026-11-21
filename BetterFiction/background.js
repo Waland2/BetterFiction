@@ -33,7 +33,8 @@ const secondaryFunctions = [
     'wordCounter',
     'profileSorts',
     'bigCovers',
-    'separateFics'
+    'separateFics',
+    'ao3Enabled'
 ];
 
 // Default values for primary functions
@@ -150,7 +151,8 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
         if (action.message === 'set-status') {
             updated.status = action.status;
         } else {
-            for (const key of ['chapter', 'chapters', 'fandom', 'author', 'storyName']) {
+            // site and url: AO3 works, which site and the address of the bookmarked chapter
+            for (const key of ['chapter', 'chapters', 'fandom', 'author', 'storyName', 'site', 'url']) {
                 if (action[key] !== undefined) updated[key] = action[key];
             }
             if (!updated.status) updated.status = action.status || 'Reading';

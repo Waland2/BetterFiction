@@ -150,8 +150,8 @@ test('invalid legacy dates and unrelated records do not hide valid bookmarks', a
     assert.deepEqual(local.writes, []);
 });
 
-const importFile = async (data, failSet = false, confirm = true) => {
-    const local = storage({ '123': record });
+const importFile = async (data, failSet = false, confirm = true, initial = { '123': record }) => {
+    const local = storage(initial);
     local.failSet = failSet;
     let click, change;
     const input = { files: [{ text: async () => JSON.stringify(data) }], remove() {}, click() {},
@@ -197,6 +197,27 @@ test('legacy exports and status-only records can be imported', async () => {
     };
     const local = await importFile(data);
     assert.deepEqual(local.data, data);
+});
+
+const ao3Work = { id: 'ao3-456', chapter: 2, chapters: 5, storyName: 'Work', status: 'Reading', site: 'ao3',
+    url: 'https://archiveofourown.org/works/456/chapters/22', addTime: '2025-01-02T00:00:00.000Z' };
+
+test('AO3 works keep their site and chapter address when saved and moved', async () => {
+    const app = background();
+    const send = action => new Promise(resolve => app.message(action, {}, resolve));
+    await send({ message: 'set-bookmark', ...ao3Work, chapter: 1, url: 'https://archiveofourown.org/works/456/chapters/11' });
+    await send({ message: 'set-bookmark', ...ao3Work });
+    assert.deepEqual(app.local.data['ao3-456'], ao3Work);
+    assert.deepEqual(app.local.data['123'], record);
+});
+
+test('exports with AO3 works can be imported, and replacing removes old AO3 works', async () => {
+    const data = { '456': { ...record, id: '456' }, 'ao3-456': ao3Work };
+    const local = await importFile(data, false, true, { '123': record, 'ao3-789': { ...ao3Work, id: 'ao3-789' } });
+    assert.deepEqual(local.data, data);
+    for (const bad of [{ 'ao3-': { ...ao3Work, id: 'ao3-' } }, { 'ao3-456': { ...ao3Work, id: 'ao3-789' } }]) {
+        assert.deepEqual((await importFile(bad)).data, { '123': record });
+    }
 });
 
 test('failed bookmark read or write preserves the saved chapter', async () => {
