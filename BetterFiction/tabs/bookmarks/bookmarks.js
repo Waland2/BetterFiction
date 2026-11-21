@@ -494,8 +494,10 @@ document.getElementById('import').addEventListener('click', () => {
             if (!jsonData || typeof jsonData !== 'object' || Array.isArray(jsonData)) {
                 throw new Error('The file is not a bookmarks file.');
             }
+            // FanFiction.net stories are stored by story id, AO3 works as "ao3-<work id>"
+            const isBookmarkKey = (key) => /^(?:\d+|ao3-\d+)$/.test(key);
             for (const [key, bookmark] of Object.entries(jsonData)) {
-                if (!/^\d+$/.test(key) || !bookmark || typeof bookmark !== 'object' || Array.isArray(bookmark)
+                if (!isBookmarkKey(key) || !bookmark || typeof bookmark !== 'object' || Array.isArray(bookmark)
                     || String(bookmark.id ?? bookmark.storyId) !== key
                     || (bookmark.chapter !== undefined && (!Number.isInteger(Number(bookmark.chapter)) || Number(bookmark.chapter) < 1))
                     || (bookmark.storyName !== undefined && typeof bookmark.storyName !== 'string')
@@ -508,7 +510,7 @@ document.getElementById('import').addEventListener('click', () => {
             if (!ok) return;
             const previous = await chrome.storage.local.get();
             await chrome.storage.local.set(jsonData);
-            const removedKeys = Object.keys(previous).filter((key) => /^\d+$/.test(key) && !Object.hasOwn(jsonData, key));
+            const removedKeys = Object.keys(previous).filter((key) => isBookmarkKey(key) && !Object.hasOwn(jsonData, key));
             if (removedKeys.length) await chrome.storage.local.remove(removedKeys);
             location.reload();
         } catch (error) {

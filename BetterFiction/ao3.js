@@ -215,7 +215,7 @@
 .bf-bookmark img { display: block; }
 ul.actions li.bf-status { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
 ul.actions li.bf-status select { width: auto; min-width: 0; }
-li.blurb.bf-marked { background-color: #e1edff !important; }
+li.blurb.bf-marked { background-color: rgba(24, 144, 255, 0.13) !important; }
 .bf-mark { margin-right: 4px; vertical-align: -3px; }
 `;
 
