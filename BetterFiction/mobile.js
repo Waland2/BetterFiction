@@ -553,8 +553,8 @@
 .bf-marked { background-color: #e1edff !important; }
 .bf-mark { margin-right: 4px; vertical-align: middle; }
 #bf-chapter-nav { margin: 8px 0; }
-#bf-menu { width: 100%; text-align: center; padding: 6px 0 4px; }
-#bf-menu .btn { margin: 3px; }
+#bf-menu { width: 100%; text-align: center; }
+#bf-menu img { vertical-align: middle; margin-right: 6px; border-radius: 3px; }
 .bf-more { font-size: 18px !important; font-weight: 600; padding: 8px 16px !important; margin: 4px 6px;
     border: 1px solid #999; border-radius: 8px; cursor: pointer; line-height: 1.2; }
 #bf-filters { text-align: center; margin: 6px 0 10px; }
@@ -588,25 +588,35 @@
     };
 
     /**
-     * The links the desktop site puts in its top bar, added to the site's "More" menu:
-     * Bookmarks, Favorites, Follows, your profile and the desktop site (each with its own setting).
+     * The links the desktop site puts in its top bar, added to the site's "More" menu as a row of the site's
+     * own buttons: My Profile, Bookmarks and Desktop site (each with its own setting).
+     * Favorites and Follows need an account: when you're logged in the site's menu already has them
+     * (Fav Stories, Followed Stories), and when you're not they'd only lead to the login page. So they're
+     * added only if you're logged in and the site's menu doesn't have them.
      * @param {Object} info
      * @param {string} [profileUrl]
      */
     const moreMenu = (info, profileUrl) => {
         const drop = document.querySelector('#t_drop');
         if (!drop || drop.querySelector('#bf-menu')) return;
+        const loggedIn = !drop.querySelector('a[href*="/m/signup.php"]'); // logged out, the site shows Login | Sign Up
+        const missing = (path) => loggedIn && !drop.querySelector(`a[href*="${path}"]`);
         const items = [
-            info.bookmarks && ['Bookmarks', chrome.runtime.getURL('tabs/bookmarks/bookmarks.html')],
-            info.favoritesLink && ['Favorites', `${SITE}/m/f_story.php`],
-            info.followsLink && ['Follows', `${SITE}/m/a_story.php`],
+            info.favoritesLink && missing('/m/f_story.php') && ['Fav Stories', `${SITE}/m/f_story.php`],
+            info.followsLink && missing('/m/a_story.php') && ['Followed Stories', `${SITE}/m/a_story.php`],
             info.profileLink && PROFILE_URL_RE.test(profileUrl || '')
-                && ['My profile', profileUrl.replace('https://www.fanfiction.net', SITE)],
+                && ['My Profile', profileUrl.replace('https://www.fanfiction.net', SITE)],
+            info.bookmarks && ['Bookmarks', chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), chrome.runtime.getURL('icons/bookmarks.svg')],
             info.siteSwitch && ['Desktop site', desktopUrl()],
         ].filter(Boolean);
         if (!items.length) return;
         const row = mkEl('div', { id: 'bf-menu' });
-        items.forEach(([text, href]) => row.append(mkEl('a', { className: 'btn', href, textContent: text })));
+        items.forEach(([text, href, image], i) => {
+            const link = mkEl('a', { className: 'btn', href });
+            if (image) link.append(mkEl('img', { src: image, width: 18, height: 18, alt: '' }));
+            link.append(text);
+            row.append(...(i ? [' ', link] : [link]));
+        });
         (drop.firstElementChild || drop).append(mkEl('hr'), row);
     };
 
