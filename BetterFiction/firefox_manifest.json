@@ -29,9 +29,14 @@
             "matches": ["https://m.fanfiction.net/*"],
             "run_at": "document_end",
             "js": ["mobile.js"]
+        },
+        {
+            "matches": ["https://archiveofourown.org/*"],
+            "run_at": "document_end",
+            "js": ["ao3.js"]
         }
     ],
-    "host_permissions": ["https://www.fanfiction.net/*", "https://m.fanfiction.net/*"],
+    "host_permissions": ["https://www.fanfiction.net/*", "https://m.fanfiction.net/*", "https://archiveofourown.org/*"],
     "web_accessible_resources": [
         {
             "resources": ["icons/*", "utils/*", "tabs/*"],

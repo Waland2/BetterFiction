@@ -71,6 +71,25 @@ const matchesStatus = (bookmark, status) => {
 };
 
 /**
+ * The address to open a bookmark: the saved AO3 chapter, or the FanFiction.net chapter.
+ * @param {Object} bookmark
+ * @returns {string}
+ */
+const linkOf = (bookmark) => {
+    if (bookmark.site === 'ao3') {
+        return bookmark.url?.startsWith('https://archiveofourown.org/')
+            ? bookmark.url
+            : `https://archiveofourown.org/works/${String(bookmark.id).replace(/^ao3-/, '')}`;
+    }
+    return `https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}`;
+};
+
+/** A small "AO3" tag shown next to the title of AO3 works. */
+const siteTag = (bookmark) => (bookmark.site === 'ao3'
+    ? Object.assign(document.createElement('span'), { className: 'site-tag', textContent: 'AO3' })
+    : null);
+
+/**
  * The bookmark as it is stored (without the values only used on this page).
  * @param {Object} bookmark
  * @returns {Object}
@@ -153,8 +172,10 @@ const createRow = (bookmark) => {
     const cells = row.children;
     cells[0].textContent = bookmark.id;
     const link = cells[1].firstChild;
-    link.href = `https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}`;
+    link.href = linkOf(bookmark);
     link.textContent = bookmark.storyName;
+    const tag = siteTag(bookmark);
+    if (tag) link.after(' ', tag);
     cells[2].textContent = `${bookmark.chapter}/${bookmark.chapters || '?'}`;
     cells[3].textContent = bookmark.fandom || '';
     cells[4].textContent = bookmark.author || '';
@@ -215,10 +236,12 @@ const CARD_TEMPLATE = (() => {
  */
 const createCard = (bookmark) => {
     const card = CARD_TEMPLATE.cloneNode(true);
-    const link = `https://www.fanfiction.net/s/${bookmark.id}/${bookmark.chapter}`;
+    const link = linkOf(bookmark);
     const title = card.querySelector('.title');
     title.href = link;
     title.textContent = bookmark.storyName;
+    const tag = siteTag(bookmark);
+    if (tag) title.after(tag);
 
     const badge = card.querySelector('.status-badge');
     const status = findStatus(bookmark);
@@ -383,7 +406,7 @@ Promise.all([settingsPromise, chrome.storage.local.get()])
                 const validDate = dateObj && !Number.isNaN(dateObj.getTime());
                 bookmark.displayDate = validDate ? window.formatDate(dateObj, validFmt) : '-';
                 addTimeMs.set(bookmark, validDate ? dateObj.getTime() : undefined);
-                searchText.set(bookmark, [bookmark.storyName, bookmark.author, bookmark.fandom]
+                searchText.set(bookmark, [bookmark.storyName, bookmark.author, bookmark.fandom, bookmark.site === 'ao3' ? 'ao3' : '']
                     .join(' ').toLowerCase());
                 loaded.push(bookmark);
             }
@@ -471,8 +494,10 @@ document.getElementById('import').addEventListener('click', () => {
             if (!jsonData || typeof jsonData !== 'object' || Array.isArray(jsonData)) {
                 throw new Error('The file is not a bookmarks file.');
             }
+            // FanFiction.net stories are stored by story id, AO3 works as "ao3-<work id>"
+            const isBookmarkKey = (key) => /^(?:\d+|ao3-\d+)$/.test(key);
             for (const [key, bookmark] of Object.entries(jsonData)) {
-                if (!/^\d+$/.test(key) || !bookmark || typeof bookmark !== 'object' || Array.isArray(bookmark)
+                if (!isBookmarkKey(key) || !bookmark || typeof bookmark !== 'object' || Array.isArray(bookmark)
                     || String(bookmark.id ?? bookmark.storyId) !== key
                     || (bookmark.chapter !== undefined && (!Number.isInteger(Number(bookmark.chapter)) || Number(bookmark.chapter) < 1))
                     || (bookmark.storyName !== undefined && typeof bookmark.storyName !== 'string')
@@ -485,7 +510,7 @@ document.getElementById('import').addEventListener('click', () => {
             if (!ok) return;
             const previous = await chrome.storage.local.get();
             await chrome.storage.local.set(jsonData);
-            const removedKeys = Object.keys(previous).filter((key) => /^\d+$/.test(key) && !Object.hasOwn(jsonData, key));
+            const removedKeys = Object.keys(previous).filter((key) => isBookmarkKey(key) && !Object.hasOwn(jsonData, key));
             if (removedKeys.length) await chrome.storage.local.remove(removedKeys);
             location.reload();
         } catch (error) {
