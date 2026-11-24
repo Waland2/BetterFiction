@@ -35,7 +35,7 @@
     "web_accessible_resources": [
         {
             "resources": ["icons/*", "utils/*", "tabs/*"],
-            "matches": ["https://www.fanfiction.net/*"]
+            "matches": ["https://www.fanfiction.net/*", "https://m.fanfiction.net/*"]
         }
     ],
     "action": {

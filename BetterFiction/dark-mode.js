@@ -35,6 +35,8 @@ ${DARK} body .bf-marked, ${DARK} body .z-list.bf-marked:nth-child(even) { backgr
 /* Header bars that use a background picture */
 ${DARK} body #top, ${DARK} body .zmenu, ${DARK} body #zmenu { background-image: none !important; }
 ${DARK} body #top { background-color: #262626 !important; }
+/* The mobile site's header bar (Just In, Community, Forum, More) uses a white gradient */
+${DARK} body .t_head { background-image: none !important; background-color: #262626 !important; }
 
 /* Text that sits on a dividing line needs a solid background to hide the line behind it */
 ${DARK} body #pre_story_links, ${DARK} body #pre_story_links span, ${DARK} body #pre_story_links .lc-left,
