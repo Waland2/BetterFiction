@@ -24,8 +24,24 @@
     const mkEl = (tag, props = {}) => Object.assign(document.createElement(tag), props);
 
     // ---------- bookmark icons and colours (the same as on FanFiction.net) ----------
-    const bookmarkIcon = (color) => 'data:image/svg+xml;base64,'
-        + btoa(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m6 4v16l6-2 6 2V4z" fill="${color}" stroke="#333298" stroke-width="2"/></svg>`);
+    // On a dark page (BetterFiction's dark mode, or a dark skin like Reversi): a white outline and brighter
+    // fills, the same as on FanFiction.net
+    const DARK_FILLS = { '#096dd9': '#4ea4ff', '#d48806': '#ffc04d', '#389e0d': '#73d13d', '#cf1322': '#ff7875' };
+    const darkPage = () => ['bf-ao3-dark', 'bf-dark-skin'].some((c) => document.documentElement.classList.contains(c));
+    const bookmarkIcon = (color) => {
+        const dark = darkPage();
+        return 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">'
+            + `<path d="m6 4v16l6-2 6 2V4z" fill="${dark ? DARK_FILLS[color] || color : color}" stroke="${dark ? '#ffffff' : '#333298'}" stroke-width="2"/></svg>`);
+    };
+    /** A bookmark icon that repaints itself when dark mode is switched on or off. */
+    const bookmarkImg = (color, props) => {
+        const img = mkEl('img', { ...props, src: bookmarkIcon(color) });
+        img.dataset.bfColor = color;
+        return img;
+    };
+    const repaintIcons = () => document.querySelectorAll('img[data-bf-color]').forEach((img) => {
+        img.src = bookmarkIcon(img.dataset.bfColor);
+    });
 
     /**
      * The colour of a bookmark, from its reading status (blue when Reading status is off).
@@ -85,9 +101,8 @@
             if (info.lastRead) showLastRead(blurb.querySelector('dl.stats'), entry, workId);
             if (!info.markBookmarks) return;
             blurb.classList.add('bf-marked');
-            link.before(mkEl('img', {
+            link.before(bookmarkImg(bookmarkColor(info, entry, chapters), {
                 className: 'bf-mark',
-                src: bookmarkIcon(bookmarkColor(info, entry, chapters)),
                 width: 18,
                 height: 18,
                 alt: '',
@@ -109,6 +124,42 @@
         if (fromSelect) return Number(fromSelect);
         const fromHeading = document.querySelector('#chapters .chapter h3.title a')?.textContent.match(/Chapter\s+(\d+)/i)?.[1];
         return Number(fromHeading || 1);
+    };
+
+    /**
+     * Adds the work to your AO3 bookmarks with empty notes, using the bookmark form AO3 puts on every work page
+     * (it carries your session's security token). Does nothing if the work is already bookmarked on AO3:
+     * the form then edits your existing bookmark, which is left as it is.
+     * @param {boolean} makePrivate
+     * @returns {Promise<'added'|'already'>}
+     */
+    const addAo3Bookmark = async (makePrivate) => {
+        const form = document.querySelector('#bookmark-form form');
+        const action = form?.getAttribute('action') || '';
+        if (!form || !/\/works\/\d+\/bookmarks\/?$/.test(action) || form.dataset.bfAdded) return 'already';
+        const data = new FormData(form);
+        data.set('bookmark[bookmarker_notes]', '');
+        // AO3's checkboxes send a hidden "0" then "1" when ticked; it reads the last value
+        data.delete('bookmark[private]');
+        data.append('bookmark[private]', '0');
+        if (makePrivate) data.append('bookmark[private]', '1');
+        data.delete('bookmark[rec]');
+        data.append('bookmark[rec]', '0');
+        const init = {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: new URLSearchParams(data).toString(),
+        };
+        const url = new URL(action, location.origin).href;
+        // Firefox: sent as the page itself (content.fetch), like AO3's own form; Chrome's content-script fetch already is
+        const pageFetch = typeof content !== 'undefined' && typeof content?.fetch === 'function' && typeof cloneInto === 'function';
+        const response = pageFetch ? await content.fetch(url, cloneInto(init, content)) : await fetch(url, init);
+        if (!response.ok) throw new Error(`AO3 answered ${response.status}`);
+        form.dataset.bfAdded = '1';
+        const link = document.querySelector('li.bookmark a.bookmark_form_placement_open');
+        if (link) link.textContent = 'Edit Bookmark';
+        return 'added';
     };
 
     /**
@@ -159,8 +210,8 @@
         const render = () => {
             const entry = dir[k];
             const here = entry?.chapter === chapter;
-            bookmarkButton.replaceChildren(mkEl('img', {
-                src: bookmarkIcon(here ? bookmarkColor(info, entry, chapters) : 'none'), width: 22, height: 22, alt: '',
+            bookmarkButton.replaceChildren(bookmarkImg(here ? bookmarkColor(info, entry, chapters) : 'none', {
+                width: 22, height: 22, alt: '',
             }));
             bookmarkButton.title = here ? 'Remove the bookmark' : `Bookmark chapter ${chapter}`;
             bookmarkButton.setAttribute('aria-label', bookmarkButton.title);
@@ -171,7 +222,17 @@
             if (info.lastRead) showLastRead(document.querySelector('dl.work.meta dl.stats'), entry, workId);
         };
 
-        const save = () => {
+        const noteLi = mkEl('li', { className: 'bf-note' });
+        noteLi.setAttribute('role', 'status');
+        noteLi.hidden = true;
+        const showNote = (text) => {
+            noteLi.textContent = text;
+            noteLi.hidden = false;
+            setTimeout(() => { noteLi.hidden = true; }, 6000);
+        };
+
+        // manual: you tapped the bookmark button (automatic bookmarking never adds AO3 bookmarks)
+        const save = (manual = false) => {
             const status = bookmarkStatus(info, dir[k]?.status);
             const addTime = dir[k]?.addTime || new Date().toISOString();
             dir[k] = {
@@ -179,6 +240,16 @@
             };
             sendMsg({ ...dir[k], message: 'set-bookmark' });
             render();
+            if (manual && info.ao3AutoBookmark) {
+                addAo3Bookmark(Boolean(info.ao3BookmarkPrivate))
+                    .then((result) => {
+                        if (result === 'added') showNote(info.ao3BookmarkPrivate ? 'Added to your AO3 bookmarks (private)' : 'Added to your AO3 bookmarks');
+                    })
+                    .catch((error) => {
+                        console.error('BetterFiction: the AO3 bookmark could not be added', error);
+                        showNote("Couldn't add the AO3 bookmark. Use AO3's Bookmark button instead.");
+                    });
+            }
         };
 
         bookmarkButton.addEventListener('click', async () => {
@@ -191,7 +262,7 @@
                 else delete dir[k];
                 render();
             } else {
-                save();
+                save(true);
             }
         });
 
@@ -199,7 +270,7 @@
         bookmarkLi.appendChild(bookmarkButton);
         const goLi = mkEl('li');
         goLi.appendChild(goButton);
-        nav.append(bookmarkLi, goLi, statusLi);
+        nav.append(bookmarkLi, goLi, statusLi, noteLi);
         render();
 
         // "Bookmark new stories automatically": a work without a bookmark is bookmarked here.
@@ -210,13 +281,34 @@
         if (bookmarkNew || followReading) save();
     };
 
+    /** "BetterFiction Bookmarks" in AO3's red menu bar, and in your "Hi, name!" menu after My Bookmarks. */
+    const bookmarksLinks = () => {
+        const item = () => {
+            const link = mkEl('a', { href: chrome.runtime.getURL('tabs/bookmarks/bookmarks.html'), textContent: 'BetterFiction Bookmarks' });
+            link.prepend(mkEl('img', { src: chrome.runtime.getURL('icons/bookmarks.svg'), width: 16, height: 16, alt: '', className: 'bf-menu-icon' }));
+            const li = mkEl('li', { className: 'bf-bookmarks-link' });
+            li.append(link);
+            return li;
+        };
+        const menu = document.querySelector('#header ul.primary.navigation.actions');
+        if (menu && !menu.querySelector('.bf-bookmarks-link')) menu.append(item());
+        const userMenu = document.querySelector('#greeting ul.user .dropdown .menu');
+        if (userMenu && !userMenu.querySelector('.bf-bookmarks-link')) {
+            const mine = Array.from(userMenu.children).find((li) => /\/bookmarks$/.test(li.querySelector('a')?.getAttribute('href') || ''));
+            if (mine) mine.after(item());
+            else userMenu.append(item());
+        }
+    };
+
     const STYLE = `
 .bf-bookmark { padding: 1px 6px; line-height: 1; vertical-align: middle; }
 .bf-bookmark img { display: block; }
 ul.actions li.bf-status { display: inline-flex; align-items: center; gap: 6px; vertical-align: middle; }
 ul.actions li.bf-status select { width: auto; min-width: 0; }
 li.blurb.bf-marked { background-color: rgba(24, 144, 255, 0.13) !important; }
-.bf-dark-skin li.blurb.bf-marked { background-color: rgba(0, 40, 90, 0.35) !important; }
+.bf-dark-skin li.blurb.bf-marked, .bf-ao3-dark li.blurb.bf-marked { background-color: rgba(0, 40, 90, 0.35) !important; }
+.bf-menu-icon { display: inline; vertical-align: -3px; margin-right: 5px; border-radius: 3px; }
+ul.actions li.bf-note { vertical-align: middle; font-style: italic; }
 .bf-mark { margin-right: 4px; vertical-align: -3px; }
 `;
 
@@ -226,6 +318,7 @@ li.blurb.bf-marked { background-color: rgba(24, 144, 255, 0.13) !important; }
      * @returns {boolean}
      */
     const darkSkin = () => {
+        if (document.documentElement.classList.contains('bf-ao3-dark')) return false; // BetterFiction's own dark mode, not a skin
         const sample = [document.querySelector('li.blurb'), document.body, document.documentElement]
             .map((node) => node && getComputedStyle(node).backgroundColor)
             .find((color) => color && !/^rgba\(\d+, \d+, \d+, 0\)$|^transparent$/.test(color));
@@ -249,6 +342,9 @@ li.blurb.bf-marked { background-color: rgba(24, 144, 255, 0.13) !important; }
         try {
             document.head.append(mkEl('style', { textContent: STYLE }));
             if (darkSkin()) document.documentElement.classList.add('bf-dark-skin');
+            // Dark mode can be switched on or off while the page is open
+            new MutationObserver(repaintIcons).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+            bookmarksLinks();
             markBlurbs(info, dir);
             if (current) workPage(info, dir, current);
         } catch (error) {
