@@ -32,6 +32,11 @@
         },
         {
             "matches": ["https://archiveofourown.org/*"],
+            "run_at": "document_start",
+            "js": ["ao3-dark.js"]
+        },
+        {
+            "matches": ["https://archiveofourown.org/*"],
             "run_at": "document_end",
             "js": ["ao3.js"]
         }
@@ -40,7 +45,7 @@
     "web_accessible_resources": [
         {
             "resources": ["icons/*", "utils/*", "tabs/*"],
-            "matches": ["https://www.fanfiction.net/*", "https://m.fanfiction.net/*"]
+            "matches": ["https://www.fanfiction.net/*", "https://m.fanfiction.net/*", "https://archiveofourown.org/*"]
         }
     ],
     "action": {

@@ -6,6 +6,8 @@
 const primaryFunctions = [
     'autoSave',
     'autoBookmarkNew',
+    'ao3AutoBookmark',
+    'ao3BookmarkPrivate',
     'markBookmarks',
     'lastRead',
     'organizer',
