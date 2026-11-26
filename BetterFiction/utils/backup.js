@@ -1,6 +1,6 @@
 /**
- * BetterFiction backup file: your bookmarks and settings in one file, for moving them between devices
- * (for example through a Google Drive or Dropbox folder; Firefox doesn't sync extensions to Android).
+ * BetterFiction backup file: your bookmarks and settings in one file, for moving them between devices or
+ * browsers (for example through a Google Drive or Dropbox folder).
  *
  * Loading a backup merges it with what is already on this device:
  *  - for each story, the copy that was changed most recently wins (moving the bookmark, adding it or
