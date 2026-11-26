@@ -97,15 +97,72 @@ const mobileUrl = (address) => {
 };
 const UNMARKED_HTML = bookmarkIcon('none');
 
-const _invertCache = new Map();
-const invertColor = (c) => {
-    let r = _invertCache.get(c);
-    if (r === undefined) {
-        const m = c.match(DIGITS_RE);
-        r = m ? `rgb(${255 - +m[0]}, ${255 - +m[1]}, ${255 - +m[2]})` : c;
-        _invertCache.set(c, r);
+// ---------- dark pages: BetterFiction's dark mode, FanFiction.net's Story Contrast, Dark Reader ----------
+const luminance = (rgb) => {
+    const v = rgb.map((x) => { const c = x / 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2];
+};
+const contrastRatio = (a, b) => { const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m); return (x + 0.05) / (y + 0.05); };
+const MARKED_DARK = [58, 69, 96]; // a bookmarked story's background in dark mode (dark-mode.js)
+
+/**
+ * The background behind a node when it's dark, whatever made it dark: the first solid background going up
+ * the page (Dark Reader and the site's Story Contrast set those), or Dark Reader's own dark marker.
+ * @param {Element} node
+ * @returns {?number[]} [r, g, b] when dark, otherwise null
+ */
+const darkBackground = (node) => {
+    for (let el = node; el && el.nodeType === 1; el = el.parentElement) {
+        const v = getComputedStyle(el).backgroundColor.match(/[\d.]+/g)?.map(Number);
+        if (v && v.length >= 3 && (v.length < 4 || v[3] > 0.5)) {
+            return (0.299 * v[0] + 0.587 * v[1] + 0.114 * v[2]) / 255 < 0.45 ? v.slice(0, 3) : null;
+        }
     }
-    return r;
+    return document.documentElement.getAttribute('data-darkreader-scheme') === 'dark' ? [24, 26, 27] : null;
+};
+
+const _readableCache = new Map();
+/**
+ * A colour that reads on a dark background: the same hue, mixed with white until it has 4.5:1 contrast
+ * against that background and against a bookmarked story's (inverting it instead would change its hue,
+ * teal ratings turning red, and leave some too dark).
+ * @param {string} color - "rgb(r, g, b)"
+ * @param {number[]} bg - [r, g, b]
+ * @returns {string}
+ */
+const readableOnDark = (color, bg) => {
+    const cacheKey = color + bg;
+    let out = _readableCache.get(cacheKey);
+    if (out !== undefined) return out;
+    const base = color.match(DIGITS_RE)?.slice(0, 3).map(Number);
+    if (!base) return color;
+    let mixed = base;
+    for (let w = 0; w <= 1; w += 0.05) {
+        mixed = base.map((x) => Math.round(x + (255 - x) * w));
+        if (contrastRatio(mixed, bg) >= 4.5 && contrastRatio(mixed, MARKED_DARK) >= 4.5) break;
+    }
+    out = `rgb(${mixed.join(', ')})`;
+    _readableCache.set(cacheKey, out);
+    return out;
+};
+
+// Things that can make the page dark or light while it's open: BetterFiction's dark mode (a class on <html>),
+// Dark Reader (attributes on <html>, styles in <head>) and the Story Contrast button
+const darkChangeListeners = [];
+let darkChangeTimer;
+const onDarkChange = (fn) => {
+    if (!darkChangeListeners.length) {
+        const changed = () => {
+            clearTimeout(darkChangeTimer);
+            darkChangeTimer = setTimeout(() => darkChangeListeners.forEach((f) => f()), 150);
+        };
+        new MutationObserver(changed).observe(document.documentElement, {
+            attributes: true, attributeFilter: ['class', 'data-darkreader-mode', 'data-darkreader-scheme'],
+        });
+        if (document.head) new MutationObserver(changed).observe(document.head, { childList: true });
+        storyContrast?.addEventListener('click', changed);
+    }
+    darkChangeListeners.push(fn);
 };
 
 const betterDescription = (info, el) => {
@@ -197,8 +254,7 @@ const betterDescription = (info, el) => {
     if (info.styleDescriptions) {
         let resolved = null;
         const applyColors = () => {
-            const darkMode = document.documentElement.classList.contains('bf-dark');
-            const dark = darkMode || storyContrast?.parentElement?.style.backgroundColor === 'rgb(51, 51, 51)';
+            const bg = darkBackground(desc);
             if (!resolved) {
                 resolved = [];
                 const aceLen = APPLY_COLOR_ENTRIES.length;
@@ -220,10 +276,10 @@ const betterDescription = (info, el) => {
             for (let i = 0; i < rlen; i++) {
                 const [targets, color, colorIsObj] = resolved[i];
                 const tlen = targets.length;
-                // "important" so BetterFiction's dark mode (which sets all text light) keeps these colours
-                const priority = darkMode ? 'important' : '';
+                // "important" on dark pages, so BetterFiction's dark mode and Dark Reader (which set text light) keep these colours
+                const priority = bg ? 'important' : '';
                 if (!colorIsObj) {
-                    const c = dark ? invertColor(color) : color;
+                    const c = bg ? readableOnDark(color, bg) : color;
                     for (let j = 0; j < tlen; j++) targets[j].style.setProperty('color', c, priority);
                     continue;
                 }
@@ -231,14 +287,13 @@ const betterDescription = (info, el) => {
                     const span = targets[j];
                     const c = color[span.textContent] || color;
                     if (typeof c !== 'string') continue;
-                    span.style.setProperty('color', dark ? invertColor(c) : c, priority);
+                    span.style.setProperty('color', bg ? readableOnDark(c, bg) : c, priority);
                 }
             }
         };
         applyColors();
-        if (storyContrast) storyContrast.onclick = applyColors;
-        // Recolour when dark mode is switched on or off
-        new MutationObserver(applyColors).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+        // Recolour when the page turns dark or light
+        onDarkChange(applyColors);
     }
 };
 

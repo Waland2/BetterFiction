@@ -39,6 +39,7 @@
     // In dark mode: a white outline and brighter fills, the same as the desktop site's dark mode
     const DARK_FILLS = { '#096dd9': '#4ea4ff', '#d48806': '#ffc04d', '#389e0d': '#73d13d', '#cf1322': '#ff7875' };
     const bookmarkIcon = (color) => (document.documentElement.classList.contains('bf-dark')
+        || document.documentElement.getAttribute('data-darkreader-scheme') === 'dark'
         ? icon('m6 4v16l6-2 6 2V4z', DARK_FILLS[color] || color, '#ffffff')
         : icon('m6 4v16l6-2 6 2V4z', color, '#333298'));
 
@@ -84,6 +85,30 @@
             if ((lum(mixed) + 0.05) / (bg + 0.05) >= 4.5) break;
         }
         return `rgb(${mixed.join(', ')})`;
+    };
+
+    /**
+     * Whether a node sits on a dark background, whatever made it dark (BetterFiction's dark mode, Dark Reader):
+     * the first solid background going up the page, or Dark Reader's own dark marker.
+     * @param {Element} node
+     * @returns {boolean}
+     */
+    const onDarkBackground = (node) => {
+        for (let el = node; el && el.nodeType === 1; el = el.parentElement) {
+            const v = getComputedStyle(el).backgroundColor.match(/[\d.]+/g)?.map(Number);
+            if (v && v.length >= 3 && (v.length < 4 || v[3] > 0.5)) return (0.299 * v[0] + 0.587 * v[1] + 0.114 * v[2]) / 255 < 0.45;
+        }
+        return document.documentElement.getAttribute('data-darkreader-scheme') === 'dark';
+    };
+
+    /** Runs fn (once things settle) when the page turns dark or light: BetterFiction's dark mode or Dark Reader. */
+    const onDarkChange = (fn) => {
+        let timer;
+        const changed = () => { clearTimeout(timer); timer = setTimeout(fn, 150); };
+        new MutationObserver(changed).observe(document.documentElement, {
+            attributes: true, attributeFilter: ['class', 'data-darkreader-mode', 'data-darkreader-scheme'],
+        });
+        if (document.head) new MutationObserver(changed).observe(document.head, { childList: true });
     };
 
     // ---------- story details ("T, English, Drama & Humor, chapters: 97, ...") ----------
@@ -203,7 +228,7 @@
 
         if (info.styleDescriptions) {
             const applyColors = () => {
-                const dark = document.documentElement.classList.contains('bf-dark');
+                const dark = onDarkBackground(container);
                 ['rated', 'language', 'genre', 'status'].forEach((k) => {
                     const span = container.querySelector(`.bf-${k}`);
                     if (!span) return;
@@ -214,8 +239,8 @@
                 });
             };
             applyColors();
-            // Recolour when BetterFiction's dark mode is switched on or off
-            new MutationObserver(applyColors).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+            // Recolour when the page turns dark or light (BetterFiction's dark mode, Dark Reader)
+            onDarkChange(applyColors);
         }
     };
 

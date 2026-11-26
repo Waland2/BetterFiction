@@ -18,6 +18,7 @@ const storage = (initial) => {
         data: structuredClone(initial), writes: [], failGet: false, failSet: false,
         async get(key) {
             if (area.failGet) throw new Error('Read failed');
+            if (Array.isArray(key)) return structuredClone(Object.fromEntries(key.filter(k => k in area.data).map(k => [k, area.data[k]])));
             return structuredClone(key ? { [key]: area.data[key] } : area.data);
         },
         async set(value) {
@@ -33,6 +34,10 @@ const storage = (initial) => {
     };
     return area;
 };
+
+// A bookmark without the time it was last changed (checked on its own where it matters)
+const withoutUpdatedAt = ({ updatedAt, ...rest }) => rest;
+const isIsoDate = (value) => typeof value === 'string' && !Number.isNaN(Date.parse(value));
 
 const background = (settings = oldSettings) => {
     const sync = storage({ settings, profileUrl: 'https://www.fanfiction.net/u/42' });
@@ -84,7 +89,8 @@ test('1.2.1 bookmark messages preserve stored date, status and unknown fields', 
     app.local.data['123'].extra = 'keep';
     app.message({ message: 'set-bookmark', id: '123', chapter: 8, storyName: 'Test' }, {}, () => {});
     await flush();
-    assert.deepEqual(app.local.data['123'], { ...record, extra: 'keep', chapter: 8 });
+    assert.deepEqual(withoutUpdatedAt(app.local.data['123']), { ...record, extra: 'keep', chapter: 8 });
+    assert.ok(isIsoDate(app.local.data['123'].updatedAt), 'moving the bookmark records when');
 });
 
 test('a stale chapter tab cannot delete a moved bookmark', async () => {
@@ -94,11 +100,13 @@ test('a stale chapter tab cannot delete a moved bookmark', async () => {
     const stale = send({ message: 'del-bookmark', chapter: 7 });
     await move;
     const current = { ...record, chapter: 8 };
-    assert.deepEqual((await stale).result.bookmark, current);
+    assert.deepEqual(withoutUpdatedAt((await stale).result.bookmark), current);
     await send({ message: 'del-bookmark' }); // Older tabs cannot identify the chapter.
-    assert.deepEqual(app.local.data, { '123': current });
+    assert.deepEqual(Object.keys(app.local.data), ['123']);
+    assert.deepEqual(withoutUpdatedAt(app.local.data['123']), current);
     assert.equal((await send({ message: 'del-bookmark', chapter: 8 })).result.ok, true);
-    assert.deepEqual(app.local.data, {});
+    assert.deepEqual(Object.keys(app.local.data), ['__bf_deleted']); // only the removal is remembered, for backups
+    assert.ok(isIsoDate(app.local.data.__bf_deleted['123']));
 });
 
 test('both manifests start dark mode on desktop and mobile pages', () => {
@@ -207,7 +215,7 @@ test('AO3 works keep their site and chapter address when saved and moved', async
     const send = action => new Promise(resolve => app.message(action, {}, resolve));
     await send({ message: 'set-bookmark', ...ao3Work, chapter: 1, url: 'https://archiveofourown.org/works/456/chapters/11' });
     await send({ message: 'set-bookmark', ...ao3Work });
-    assert.deepEqual(app.local.data['ao3-456'], ao3Work);
+    assert.deepEqual(withoutUpdatedAt(app.local.data['ao3-456']), ao3Work);
     assert.deepEqual(app.local.data['123'], record);
 });
 
@@ -294,4 +302,113 @@ test('content script reads legacy records without rewriting them and distinguish
     assert.deepEqual(local.writes, []);
     local.failGet = true;
     assert.equal((await load())[1], null);
+});
+
+// ---------- Backup file (utils/backup.js) ----------
+const backupApp = (localData, syncData = { settings: { darkMode: false, bookmarks: true }, profileUrl: '' }) => {
+    const local = storage(localData);
+    const sync = storage(syncData);
+    const saved = [];
+    class Blob { constructor(parts) { saved.push(parts.join('')); } }
+    const window = {};
+    const document = { createElement: () => ({ click() {}, remove() {} }), body: { appendChild() {} } };
+    const chrome = { storage: { local, sync }, runtime: { getManifest: () => ({ version: '1.4.0' }) } };
+    vm.runInNewContext(read('utils/backup.js'), {
+        window, document, chrome, Blob, URL: { createObjectURL: () => 'blob:x', revokeObjectURL() {} },
+        localStorage: { setItem() {}, getItem: () => null }, setTimeout: () => {}, console,
+    });
+    const file = (data) => ({ text: async () => (typeof data === 'string' ? data : JSON.stringify(data)) });
+    return { local, sync, saved, backup: window.betterfictionBackup, file };
+};
+const day = (n) => new Date(Date.UTC(2026, 0, n)).toISOString();
+const story = (id, chapter, updatedAt, extra = {}) => ({ id, chapter, storyName: `Story ${id}`, status: 'Reading', addTime: day(1), updatedAt, ...extra });
+
+test('a backup holds the bookmarks, removals and settings, without BetterFiction\'s own records', async () => {
+    const app = backupApp({ '1': story('1', 3, day(2)), 'ao3-9': story('ao3-9', 2, day(2), { site: 'ao3' }), __bf_deleted: { '5': day(3) }, junk: 'x' });
+    assert.equal((await app.backup.save()).stories, 2);
+    const data = JSON.parse(app.saved[0]);
+    assert.equal(data.format, 'betterfiction-backup');
+    assert.deepEqual(Object.keys(data.library).sort(), ['1', 'ao3-9']);
+    assert.deepEqual(data.deleted, { '5': day(3) });
+    assert.deepEqual(data.settings, { settings: { darkMode: false, bookmarks: true }, profileUrl: '' });
+});
+
+test('loading keeps the most recent copy of each story, and adds new ones', async () => {
+    const app = backupApp({ '1': story('1', 3, day(5)), '2': story('2', 3, day(2)), '3': story('3', 4, day(2)) });
+    const result = await app.backup.load(app.file({ format: 'betterfiction-backup', library: {
+        '1': story('1', 9, day(4)), // older than this device's copy: kept as it is
+        '2': story('2', 7, day(6)), // newer: replaces
+        '3': story('3', 5, day(2)), // same time, further along: replaces
+        '4': story('4', 1, day(3)), // new
+    } }));
+    assert.equal(app.local.data['1'].chapter, 3);
+    assert.equal(app.local.data['2'].chapter, 7);
+    assert.equal(app.local.data['3'].chapter, 5);
+    assert.equal(app.local.data['4'].chapter, 1);
+    assert.deepEqual([result.added, result.updated, result.kept, result.removed], [1, 2, 1, 0]);
+    assert.equal(app.backup.describe(result), 'Bookmarks: 1 added, 2 updated, 1 already up to date.');
+});
+
+test('stories removed on the other device are removed here, unless changed here later', async () => {
+    const app = backupApp({ '1': story('1', 3, day(2)), '2': story('2', 3, day(9)) });
+    const result = await app.backup.load(app.file({ format: 'betterfiction-backup', library: {}, deleted: { '1': day(5), '2': day(5) } }));
+    assert.equal(app.local.data['1'], undefined);
+    assert.equal(app.local.data['2'].chapter, 3); // changed here after it was removed there
+    assert.equal(result.removed, 1);
+    assert.deepEqual(app.local.data.__bf_deleted, { '1': day(5), '2': day(5) });
+});
+
+test('a story removed here is not brought back by an older backup, but is by a newer one', async () => {
+    const app = backupApp({ __bf_deleted: { '1': day(5), '2': day(5) } });
+    await app.backup.load(app.file({ format: 'betterfiction-backup', library: { '1': story('1', 3, day(4)), '2': story('2', 6, day(7)) } }));
+    assert.equal(app.local.data['1'], undefined);
+    assert.equal(app.local.data['2'].chapter, 6);
+    assert.deepEqual(app.local.data.__bf_deleted, { '1': day(5) });
+});
+
+test('settings in the backup replace the ones here; settings it lacks keep their value', async () => {
+    const app = backupApp({}, { settings: { darkMode: false, bookmarks: true, autoSave: true }, profileUrl: '' });
+    const result = await app.backup.load(app.file({ format: 'betterfiction-backup', library: {}, settings: { settings: { darkMode: true, bookmarks: true }, profileUrl: 'https://www.fanfiction.net/u/1/A' } }));
+    assert.deepEqual(app.sync.data.settings, { darkMode: true, bookmarks: true, autoSave: true });
+    assert.equal(app.sync.data.profileUrl, 'https://www.fanfiction.net/u/1/A');
+    assert.equal(result.settings, true);
+});
+
+test('Export files and FicShelf backups load (their bookmarks only), bad files change nothing', async () => {
+    const app = backupApp({ '1': story('1', 3, day(2)) }, { settings: { darkMode: false } });
+    await app.backup.load(app.file({ '7': story('7', 2, day(2)) })); // an Export file
+    assert.equal(app.local.data['7'].chapter, 2);
+    const result = await app.backup.load(app.file({ format: 'ficshelf-backup', library: { '8': story('8', 4, day(2)) }, settings: { settings: { darkMode: true } } }));
+    assert.equal(app.local.data['8'].chapter, 4);
+    assert.equal(result.settings, false);
+    assert.deepEqual(app.sync.data.settings, { darkMode: false });
+    const before = structuredClone(app.local.data);
+    const writes = app.local.writes.length;
+    for (const bad of ['not json', '[]', { hello: 'world' }, { '9': { id: '8', chapter: 1 } }, { '9': { chapter: -1 } }]) {
+        await assert.rejects(app.backup.load(app.file(bad)), /isn't a BetterFiction backup/);
+    }
+    assert.deepEqual(app.local.data, before);
+    assert.equal(app.local.writes.length, writes);
+    // a backup's invalid stories are skipped, the rest still load
+    await app.backup.load(app.file({ format: 'betterfiction-backup', library: { '9': { id: '9', chapter: 0 }, '10': story('10', 1, day(2)), __bf_deleted: {} } }));
+    assert.equal(app.local.data['9'], undefined);
+    assert.equal(app.local.data['10'].chapter, 1);
+});
+
+test('only your changes count as changes: refreshing the chapter count keeps the change time', async () => {
+    const app = background();
+    const send = action => new Promise(resolve => app.message({ id: '123', ...action }, {}, resolve));
+    await send({ message: 'set-bookmark', chapters: 40, existingOnly: true });
+    assert.equal(app.local.data['123'].updatedAt, undefined);
+    assert.equal(app.local.data['123'].chapters, 40);
+    await send({ message: 'set-status', status: 'Completed' });
+    assert.ok(isIsoDate(app.local.data['123'].updatedAt));
+    const statusTime = app.local.data['123'].updatedAt;
+    await send({ message: 'set-bookmark', chapters: 41, existingOnly: true });
+    assert.equal(app.local.data['123'].updatedAt, statusTime);
+});
+
+test('Export leaves out BetterFiction\'s own records, so the file can be imported', () => {
+    const source = read('tabs/bookmarks/bookmarks.js');
+    assert.match(source, /filter\(\(\[key\]\) => !key\.startsWith\('__'\)\)/);
 });

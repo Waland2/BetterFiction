@@ -68,6 +68,15 @@ const legacyMapKeys = Object.keys(legacyMap);
 let updateNoticeQueue = Promise.resolve();
 let storageQueue = Promise.resolve();
 
+// Stories you removed, with when, so loading a backup made earlier on another device doesn't bring them back
+// (utils/backup.js). Kept under a key that is never a story id.
+const REMOVED_KEY = '__bf_deleted';
+const rememberRemoval = async (id) => {
+    const { [REMOVED_KEY]: removed = {} } = await chrome.storage.local.get(REMOVED_KEY);
+    removed[id] = new Date().toISOString();
+    await chrome.storage.local.set({ [REMOVED_KEY]: removed });
+};
+
 // A read/modify/write must finish before another tab reads the same record.
 const queueWrite = (write) => {
     const result = storageQueue.then(write);
@@ -153,10 +162,15 @@ chrome.runtime.onMessage.addListener((action, sender, sendResponse) => {
         if (action.message === 'del-bookmark') {
             if (!action.chapter || Number(existing?.chapter) !== action.chapter) return existing;
             await chrome.storage.local.remove(action.id);
+            await rememberRemoval(action.id);
             return;
         }
         if (!existing && action.existingOnly) throw new Error('Bookmark no longer exists');
         const updated = { ...existing, id: action.id };
+        // When you last changed it (moved the bookmark, added it or changed its status), so a backup loaded on
+        // another device keeps the newest copy. Refreshing the chapter count alone isn't a change.
+        const changedByYou = action.message === 'set-status' || !existing || (action.chapter !== undefined && action.chapter !== existing.chapter);
+        if (changedByYou) updated.updatedAt = new Date().toISOString();
         if (action.message === 'set-status') {
             updated.status = action.status;
         } else {

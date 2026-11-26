@@ -330,6 +330,9 @@ const removeBookmark = (bookmark) => {
     bookmarks = bookmarks.filter((b) => b !== bookmark);
     lastRemoved = bookmark;
     chrome.storage.local.remove(bookmark.id)
+        // Remembered with when, so loading an older backup from another device doesn't bring it back
+        .then(() => chrome.storage.local.get('__bf_deleted'))
+        .then(({ __bf_deleted: removed = {} }) => chrome.storage.local.set({ __bf_deleted: { ...removed, [bookmark.id]: new Date().toISOString() } }))
         .catch((error) => {
             console.error(`Failed to delete bookmark for story ${bookmark.id}:`, error);
         });
@@ -344,6 +347,8 @@ undoEl.addEventListener('click', () => {
     const bookmark = lastRemoved;
     lastRemoved = null;
     bookmarks.push(bookmark);
+    // Changed after it was removed, so a backup never removes it again
+    bookmark.updatedAt = new Date().toISOString();
     chrome.storage.local.set({ [bookmark.id]: stored(bookmark) })
         .catch((error) => {
             console.error(`Failed to restore bookmark for story ${bookmark.id}:`, error);
@@ -462,7 +467,9 @@ filterButtons.forEach((button) => {
 document.getElementById('export').addEventListener('click', () => {
     chrome.storage.local.get()
         .then((result) => {
-            const blob = new Blob([JSON.stringify(result)], { type: 'application/json;charset=utf-8' });
+            // Only the bookmarks: keys starting with "__" are BetterFiction's own records (like the removed list)
+            const bookmarksOnly = Object.fromEntries(Object.entries(result).filter(([key]) => !key.startsWith('__')));
+            const blob = new Blob([JSON.stringify(bookmarksOnly)], { type: 'application/json;charset=utf-8' });
             const link = Object.assign(document.createElement('a'), {
                 href: URL.createObjectURL(blob),
                 download: 'bookmarks.json',
