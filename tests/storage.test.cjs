@@ -374,14 +374,10 @@ test('settings in the backup replace the ones here; settings it lacks keep their
     assert.equal(result.settings, true);
 });
 
-test('Export files and FicShelf backups load (their bookmarks only), bad files change nothing', async () => {
+test('Export files load, bad files change nothing', async () => {
     const app = backupApp({ '1': story('1', 3, day(2)) }, { settings: { darkMode: false } });
     await app.backup.load(app.file({ '7': story('7', 2, day(2)) })); // an Export file
     assert.equal(app.local.data['7'].chapter, 2);
-    const result = await app.backup.load(app.file({ format: 'ficshelf-backup', library: { '8': story('8', 4, day(2)) }, settings: { settings: { darkMode: true } } }));
-    assert.equal(app.local.data['8'].chapter, 4);
-    assert.equal(result.settings, false);
-    assert.deepEqual(app.sync.data.settings, { darkMode: false });
     const before = structuredClone(app.local.data);
     const writes = app.local.writes.length;
     for (const bad of ['not json', '[]', { hello: 'world' }, { '9': { id: '8', chapter: 1 } }, { '9': { chapter: -1 } }]) {

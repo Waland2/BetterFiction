@@ -7,14 +7,13 @@
  *    changing its status counts as a change; the chapter count being refreshed doesn't);
  *  - stories removed on the other device are removed here too, unless you changed them here later;
  *  - settings in the file replace the ones here; a setting the file doesn't have keeps its value.
- * Bookmarks files from Export, and FicShelf backups (their bookmarks), load too.
+ * Bookmarks files from Export load too.
  * Loaded by the settings page.
  */
 (() => {
     const DELETED = '__bf_deleted'; // { storyKey: ISO date it was removed }
     const SYNC_KEYS = ['settings', 'profileUrl'];
     const FILE_NAME = 'betterfiction-backup.json';
-    const FORMATS = ['betterfiction-backup', 'ficshelf-backup'];
 
     /** A story as BetterFiction stores it: a FanFiction.net story id or "ao3-<work id>", with sane values. */
     const isEntry = (key, value) => /^(?:\d+|ao3-\d+)$/.test(key)
@@ -66,7 +65,7 @@
             throw notABackup();
         }
         if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw notABackup();
-        const isBackup = FORMATS.includes(parsed.format);
+        const isBackup = parsed.format === 'betterfiction-backup';
         const incoming = isBackup ? (parsed.library || {}) : parsed; // an Export file is just the bookmarks
         const incomingDeleted = isBackup && parsed.deleted && typeof parsed.deleted === 'object' ? parsed.deleted : {};
         if (!incoming || typeof incoming !== 'object' || Array.isArray(incoming)) throw notABackup();
@@ -124,8 +123,7 @@
         if (toRemove.length) await chrome.storage.local.remove(toRemove);
 
         let settings = false;
-        // Settings only come from BetterFiction backups (FicShelf's settings don't all mean the same thing)
-        if (parsed.format === 'betterfiction-backup' && parsed.settings && typeof parsed.settings === 'object') {
+        if (isBackup && parsed.settings && typeof parsed.settings === 'object') {
             const values = {};
             SYNC_KEYS.forEach((key) => { if (key in parsed.settings) values[key] = parsed.settings[key]; });
             if (values.settings && (typeof values.settings !== 'object' || Array.isArray(values.settings))) delete values.settings;
