@@ -135,3 +135,44 @@ profileInput.addEventListener('change', () => {
             showProfileMessage('The address couldn\'t be saved. Try again.', true);
         });
 });
+
+// Backup and sync (utils/backup.js)
+const backupMessage = document.getElementById('backup-message');
+const showBackupMessage = (text, isError = false) => {
+    backupMessage.textContent = text;
+    backupMessage.classList.toggle('error', isError);
+};
+const lastBackup = window.betterfictionBackup.lastSaved();
+if (lastBackup) showBackupMessage(`Last backup from this device: ${new Date(lastBackup).toLocaleString()}.`);
+try {
+    // The result of a backup just loaded (the page reloads to show the loaded settings)
+    const loaded = sessionStorage.getItem('bf-backup-loaded');
+    if (loaded) showBackupMessage(loaded);
+    sessionStorage.removeItem('bf-backup-loaded');
+} catch (error) {
+    // storage blocked
+}
+document.getElementById('backup-save').addEventListener('click', () => {
+    window.betterfictionBackup.save()
+        .then(({ stories }) => showBackupMessage(`Saved betterfiction-backup.json with ${stories} ${stories === 1 ? 'story' : 'stories'} and your settings.`))
+        .catch((error) => {
+            console.error('Failed to save the backup:', error);
+            showBackupMessage('The backup couldn\'t be saved. Try again.', true);
+        });
+});
+document.getElementById('backup-load').addEventListener('click', () => {
+    window.betterfictionBackup.pickAndLoad()
+        .then((result) => {
+            if (!result) return;
+            const text = window.betterfictionBackup.describe(result);
+            showBackupMessage(text);
+            if (!result.settings) return;
+            // Reload so the switches show the loaded settings, keeping this message
+            try { sessionStorage.setItem('bf-backup-loaded', text); } catch (error) { /* storage blocked */ }
+            location.reload();
+        })
+        .catch((error) => {
+            console.error('Failed to load the backup:', error);
+            showBackupMessage(error.message, true);
+        });
+});

@@ -93,6 +93,23 @@
             </div>
         </section>
 
+        <section aria-labelledby="section-backup">
+            <h2 id="section-backup">Backup and sync</h2>
+            <div class="panel">
+                <div class="row field">
+                    <span class="text">
+                        <span class="name">Backup file</span>
+                        <span class="desc">Your bookmarks and settings in one file, to move them to another device or browser: save a backup into a cloud folder (like Google Drive), then load it on the other one. Loading keeps the most recent change for each story, removes stories you removed on the other device, and replaces the settings.</span>
+                    </span>
+                    <div class="backup-buttons">
+                        <button type="button" class="button" id="backup-save">Save backup</button>
+                        <button type="button" class="button" id="backup-load">Load backup</button>
+                    </div>
+                    <p id="backup-message" class="field-message" role="status"></p>
+                </div>
+            </div>
+        </section>
+
         <section aria-labelledby="section-1">
             <h2 id="section-1">Reading a story</h2>
             <div class="panel">
@@ -280,6 +297,7 @@
     </main>
 
     <script src="../../utils/handlers.js"></script>
+    <script src="../../utils/backup.js"></script>
     <script src="options.js"></script>
 </body>
 
