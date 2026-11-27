@@ -48,6 +48,59 @@ const toNum = (v, d = 0) => {
 };
 const mkEl = (tag, props) => Object.assign(document.createElement(tag), props);
 const sendMsg = p => chrome.runtime.sendMessage(p).then(r => r.result).catch(() => ({}));
+
+// ---------- Also follow / Also favourite the story (settings ffnAutoFollow, ffnAutoFavorite) ----------
+// A short message at the top of the page, like the site's own notices
+const toast = (text) => {
+    const note = mkEl('div', { textContent: text, role: 'status' });
+    note.style.cssText = 'position:fixed;left:50%;top:12px;transform:translateX(-50%);z-index:99999;padding:10px 16px;border-radius:8px;font:14px sans-serif;';
+    // "important" so the dark theme (which makes every background transparent) can't hide it
+    note.style.setProperty('background-color', '#333399', 'important');
+    note.style.setProperty('color', '#ffffff', 'important');
+    document.body.appendChild(note);
+    setTimeout(() => note.remove(), 5000);
+};
+
+/**
+ * Follows and/or favourites the story, the same request the site's own Follow/Fav window sends
+ * (only the story: the author's follow and favourite are left as they are).
+ * @param {Object} info - Settings.
+ * @param {string} storyId
+ */
+const followAndFavourite = async (info, storyId) => {
+    if (!qs('#name_login [onclick*="logout"]')) {
+        toast('Sign in to FanFiction.net to follow or favourite stories automatically.');
+        return;
+    }
+    const authorId = qs('#profile_top a[href*="/u/"]')?.href.match(/\/u\/(\d+)/)?.[1] || '';
+    const body = new URLSearchParams({
+        storyid: storyId,
+        userid: authorId,
+        authoralert: '0',
+        storyalert: info.ffnAutoFollow ? '1' : '0',
+        favstory: info.ffnAutoFavorite ? '1' : '0',
+        favauthor: '0',
+    }).toString();
+    const init = {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
+        body,
+    };
+    const what = [info.ffnAutoFollow && 'followed', info.ffnAutoFavorite && 'favourited'].filter(Boolean).join(' and ');
+    try {
+        // Firefox: sent as the page itself (content.fetch), like the site's own request; Chrome's content-script fetch already is
+        const pageFetch = typeof content !== 'undefined' && typeof content?.fetch === 'function' && typeof cloneInto === 'function';
+        const response = pageFetch ? await content.fetch('/api/ajax_subs.php', cloneInto(init, content)) : await fetch('/api/ajax_subs.php', init);
+        const data = JSON.parse(await response.text());
+        if (!response.ok || data.error) throw new Error(data.error || `FanFiction.net answered ${response.status}`);
+        toast(`Story ${what}.`);
+    } catch (error) {
+        console.error('BetterFiction: follow/favourite failed', error);
+        toast("Couldn't follow or favourite this story. Use the Follow/Fav button instead.");
+    }
+};
+let followedThisVisit = false;
 const icon = (d, f, s) => 'data:image/svg+xml;base64,' + btoa(`<svg xmlns="http://www.w3.org/2000/svg"><path d="${d}" fill="${f}" stroke="${s}" stroke-width="2"/></svg>`);
 const bookmarkIconCache = new Map();
 const bookmarkIcon = c => {
@@ -360,6 +413,7 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
                 innerHTML: entry?.chapter === ch ? bookmarkIcon(getBookmarkColor(info, dir, id, chapters, ch)) : unmarked,
                 id: `bookmark${ch}`, style: 'height: 30px;',
                 onclick: async function() {
+                    const event = arguments[0]; // the click: isTrusted when you tapped it, not when automatic bookmarking did
                     const dirEntry = dir[id];
                     const orgSelector = document.getElementById('organizer-status-selecter');
                     if (dirEntry?.chapter === ch) {
@@ -390,6 +444,12 @@ const createStory = (info, dir, id, chapters, selects, texts, follow, entire = f
                     bm.message = 'set-bookmark';
                     sendMsg(bm);
                     showLastRead(info, qs('#profile_top'), id, ch);
+                    // Bookmarking a story that's new to your bookmarks can also follow and/or favourite it: only when you
+                    // tap the button yourself (automatic bookmarking clicks it from code), and once per visit
+                    if (!dirEntry?.chapter && event?.isTrusted && !followedThisVisit && (info.ffnAutoFollow || info.ffnAutoFavorite)) {
+                        followedThisVisit = true;
+                        followAndFavourite(info, id);
+                    }
                 }
             });
             sep.children[1]?.after(btn);
