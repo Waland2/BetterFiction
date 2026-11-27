@@ -357,12 +357,49 @@
         const bar = mkEl('div', { id: 'bf-bar' });
         const bookmarkButtons = [];
 
-        const save = (ch) => {
+        // Also follow / Also favourite: with the site's own Follow/Favorite form at the bottom of the page,
+        // ticking only Follow and/or Favorite for the story (the author's are left as they are)
+        const followAndFavourite = async () => {
+            const form = document.querySelector('form[action="/m/subs.php"]');
+            if (!form) return 'no-form';
+            if (!document.querySelector('a[href*="/m/logout.php"]')) return 'signed-out';
+            const params = new URLSearchParams();
+            form.querySelectorAll('input[type="hidden"]').forEach((input) => params.set(input.name, input.value));
+            if (info.ffnAutoFollow) params.set('salert', '1');
+            if (info.ffnAutoFavorite) params.set('favs', '1');
+            const response = await fetch(`${SITE}/m/subs.php?${params}`, { credentials: 'include' });
+            if (!response.ok) throw new Error(`FanFiction.net answered ${response.status}`);
+            return 'done';
+        };
+        const note = mkEl('span', { className: 'bf-note' });
+        note.setAttribute('role', 'status');
+        const showNote = (text) => {
+            note.textContent = text;
+            setTimeout(() => { if (note.textContent === text) note.textContent = ''; }, 6000);
+        };
+        let followedThisVisit = false;
+
+        // manual: you tapped the bookmark button (automatic bookmarking never follows or favourites)
+        const save = (ch, manual = false) => {
+            const isNew = !dir[storyId]?.chapter;
             const status = bookmarkStatus(info, dir[storyId]?.status);
             const addTime = dir[storyId]?.addTime || new Date().toISOString();
             dir[storyId] = { id: storyId, chapter: ch, chapters, fandom, author, storyName, addTime, status };
             sendMsg({ ...dir[storyId], message: 'set-bookmark' });
             refresh();
+            if (manual && isNew && !followedThisVisit && (info.ffnAutoFollow || info.ffnAutoFavorite)) {
+                followedThisVisit = true;
+                const what = [info.ffnAutoFollow && 'followed', info.ffnAutoFavorite && 'favourited'].filter(Boolean).join(' and ');
+                followAndFavourite()
+                    .then((result) => {
+                        if (result === 'done') showNote(`Story ${what}.`);
+                        else if (result === 'signed-out') showNote('Sign in to FanFiction.net to follow or favourite stories automatically.');
+                    })
+                    .catch((error) => {
+                        console.error('BetterFiction: follow/favourite failed', error);
+                        showNote("Couldn't follow or favourite. Use the site's Follow/Favorite form instead.");
+                    });
+            }
         };
         const remove = async (ch) => {
             const entry = dir[storyId];
@@ -376,7 +413,7 @@
         const bookmarkButton = (ch) => {
             const button = mkEl('button', { type: 'button', className: 'btn bf-bookmark bookmark' });
             button.dataset.chapter = String(ch);
-            button.addEventListener('click', () => (dir[storyId]?.chapter === ch ? remove(ch) : save(ch)));
+            button.addEventListener('click', () => (dir[storyId]?.chapter === ch ? remove(ch) : save(ch, true)));
             bookmarkButtons.push(button);
             return button;
         };
@@ -508,6 +545,7 @@
             run();
         };
 
+        if (info.bookmarks && (info.ffnAutoFollow || info.ffnAutoFavorite)) bar.append(note);
         if (bar.childNodes.length) storyBox.before(bar);
 
         // The site's chapter links from the bottom of the page (« First « Prev Ch 3 of 10 Next »), copied above
@@ -552,6 +590,7 @@
 .bf-separate { border: 1px solid #969696; border-radius: 6px; margin: 0 4px 10px; padding: 6px 8px; }
 .bf-marked { background-color: #e1edff !important; }
 .bf-mark { margin-right: 4px; vertical-align: middle; }
+.bf-note { font-size: 14px; opacity: 0.85; }
 #bf-chapter-nav { margin: 8px 0; }
 #bf-menu { width: 100%; text-align: center; }
 #bf-menu img { vertical-align: middle; margin-right: 6px; border-radius: 3px; }

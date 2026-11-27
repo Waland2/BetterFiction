@@ -17,6 +17,8 @@ const primaryFunctions = [
     'dateFormatMode',
     'customDateFormat',
     'darkMode',
+    'ffnAutoFollow',
+    'ffnAutoFavorite',
 ];
 
 /**
