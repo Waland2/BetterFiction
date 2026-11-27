@@ -34,6 +34,7 @@ const secondaryFunctions = [
     'mobileChapterNav',
     'mobileBigMore',
     'bookmarks',
+    'colorBookmarks',
     'wordCounter',
     'profileSorts',
     'bigCovers',

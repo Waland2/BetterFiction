@@ -44,18 +44,29 @@
                 <button type="button" class="view" data-view="cards" aria-pressed="false">Cards</button>
             </div>
 
-            <label class="sort">
-                <span>Sort</span>
-                <select id="sort">
-                    <option value="oldest">Oldest first</option>
-                    <option value="newest">Newest first</option>
-                    <option value="storyName">Title</option>
-                    <option value="author">Author</option>
-                    <option value="fandom">Fandom</option>
-                    <option value="progress">Progress</option>
-                    <option value="" hidden>Table column</option>
-                </select>
-            </label>
+            <div class="menus">
+                <label class="sort site-filter" id="site-filter" hidden>
+                    <span>Site</span>
+                    <select id="site">
+                        <option value="all">Both sites</option>
+                        <option value="ffn">FanFiction.net</option>
+                        <option value="ao3">AO3</option>
+                    </select>
+                </label>
+
+                <label class="sort">
+                    <span>Sort</span>
+                    <select id="sort">
+                        <option value="oldest">Oldest first</option>
+                        <option value="newest">Newest first</option>
+                        <option value="storyName">Title</option>
+                        <option value="author">Author</option>
+                        <option value="fandom">Fandom</option>
+                        <option value="progress">Progress</option>
+                        <option value="" hidden>Table column</option>
+                    </select>
+                </label>
+            </div>
         </div>
 
         <p class="notice" id="notice" role="status" hidden>
