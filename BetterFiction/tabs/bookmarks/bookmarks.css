@@ -200,6 +200,14 @@ select:focus-visible {
     padding: 6px 8px;
 }
 
+/* Site and Sort menus, kept together when the controls wrap */
+.menus {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
 /* Table / Cards switch */
 .view-switch {
     display: flex;

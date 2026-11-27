@@ -43,6 +43,20 @@ const savedView = () => {
 };
 let view = savedView();
 
+// Site filter: Both sites, FanFiction.net or AO3 (shown when your bookmarks include both sites)
+const SITE_KEY = 'betterfiction-bookmarks-site';
+const SITE_NAMES = { ffn: 'FanFiction.net', ao3: 'AO3' };
+const siteEl = document.getElementById('site');
+const siteFilterEl = document.getElementById('site-filter');
+const siteOf = (bookmark) => (bookmark.site === 'ao3' ? 'ao3' : 'ffn');
+let activeSite = 'all';
+try {
+    const saved = localStorage.getItem(SITE_KEY);
+    if (saved in SITE_NAMES) activeSite = saved;
+} catch (error) {
+    // storage blocked: show both sites
+}
+
 /**
  * The status to show: "Automatic" is worked out from the reading progress.
  * @param {Object} bookmark
@@ -292,7 +306,12 @@ const render = () => {
     const query = searchEl.value.trim().toLowerCase();
     const counts = Object.fromEntries(['All', ...STATUSES].map((status) => [status, 0]));
     const shown = [];
+    // The site filter only when there's something to choose between (or a choice to undo)
+    const bothSites = bookmarks.some((b) => siteOf(b) === 'ao3') && bookmarks.some((b) => siteOf(b) === 'ffn');
+    siteFilterEl.hidden = !bothSites && activeSite === 'all';
+    siteEl.value = activeSite;
     for (const bookmark of bookmarks) {
+        if (activeSite !== 'all' && siteOf(bookmark) !== activeSite) continue;
         if (query && !searchText.get(bookmark).includes(query)) continue;
         counts.All++;
         counts[findStatus(bookmark)]++;
@@ -319,6 +338,7 @@ const render = () => {
     emptyEl.hidden = shown.length > 0;
     if (!total) emptyEl.textContent = 'No bookmarks yet. Use the bookmark button on any chapter to save your place.';
     else if (query) emptyEl.textContent = `Nothing matches "${searchEl.value.trim()}".`;
+    else if (activeSite !== 'all') emptyEl.textContent = `No ${activeStatus === 'All' ? '' : `${activeStatus.toLowerCase()} `}stories from ${SITE_NAMES[activeSite]}.`;
     else emptyEl.textContent = `No ${activeStatus.toLowerCase()} stories.`;
 };
 
@@ -422,6 +442,16 @@ Promise.all([settingsPromise, chrome.storage.local.get()])
     });
 
 searchEl.addEventListener('input', render);
+
+siteEl.addEventListener('change', () => {
+    activeSite = siteEl.value in SITE_NAMES ? siteEl.value : 'all';
+    try {
+        localStorage.setItem(SITE_KEY, activeSite);
+    } catch (error) {
+        // storage blocked: the choice lasts until the page is closed
+    }
+    render();
+});
 sortEl.addEventListener('change', () => {
     [sortType, sortDir] = SORT_CHOICES[sortEl.value] || SORT_CHOICES.oldest;
     render();
